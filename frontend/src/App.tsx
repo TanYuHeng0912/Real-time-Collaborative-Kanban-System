@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import GanttChartPage from './pages/GanttChartPage';
 import { useAuthStore } from './store/authStore';
 
 const queryClient = new QueryClient({
@@ -39,6 +40,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/gantt/:boardId"
+            element={
+              <ProtectedRoute>
+                <GanttChartPage />
               </ProtectedRoute>
             }
           />

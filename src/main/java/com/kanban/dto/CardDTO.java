@@ -27,6 +27,7 @@ public class CardDTO {
     private Long lastModifiedBy;
     private String lastModifiedByName;
     private LocalDateTime dueDate;
+    private String priority; // LOW, MEDIUM, HIGH
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

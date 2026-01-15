@@ -21,5 +21,7 @@ public class UpdateCardRequest {
     
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate dueDate;
+    
+    private String priority; // LOW, MEDIUM, HIGH
 }
 

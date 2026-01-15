@@ -120,6 +120,7 @@ CREATE TABLE IF NOT EXISTS cards (
     assigned_to BIGINT,
     last_modified_by BIGINT,
     due_date TIMESTAMP,
+    priority VARCHAR(20) DEFAULT 'MEDIUM', -- Priority levels: LOW, MEDIUM, HIGH, DONE
     is_deleted BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),

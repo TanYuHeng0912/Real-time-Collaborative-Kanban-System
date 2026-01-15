@@ -193,6 +193,7 @@ public class BoardService {
                 .lastModifiedBy(card.getLastModifiedBy() != null ? card.getLastModifiedBy().getId() : null)
                 .lastModifiedByName(card.getLastModifiedBy() != null ? formatUserName(card.getLastModifiedBy()) : null)
                 .dueDate(card.getDueDate())
+                .priority(card.getPriority() != null ? card.getPriority().name() : "MEDIUM")
                 .createdAt(card.getCreatedAt())
                 .updatedAt(card.getUpdatedAt())
                 .build();

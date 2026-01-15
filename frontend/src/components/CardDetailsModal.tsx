@@ -6,7 +6,7 @@ import { userService } from '@/services/userService';
 import { useAuthStore } from '@/store/authStore';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { X, User, Calendar, FileText } from 'lucide-react';
+import { X, User, Calendar, FileText, Flag } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface CardDetailsModalProps {
@@ -41,6 +41,7 @@ export default function CardDetailsModal({ card, boardId, isOpen, onClose }: Car
   const [description, setDescription] = useState(card.description || '');
   const [assignedUserIds, setAssignedUserIds] = useState<number[]>(card.assignedUserIds || (card.assignedTo ? [card.assignedTo] : []));
   const [dueDate, setDueDate] = useState(card.dueDate ? extractDatePart(card.dueDate) : '');
+  const [priority, setPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'DONE'>(card.priority || 'MEDIUM');
 
   const { data: users } = useQuery({
     queryKey: ['users', 'board', boardId],
@@ -48,12 +49,17 @@ export default function CardDetailsModal({ card, boardId, isOpen, onClose }: Car
     enabled: isOpen,
   });
 
+  // Priority can be edited by assigned users or owner (backend will validate)
+  // Since the modal is only shown for cards the user can edit, we enable priority editing
+  // The backend will enforce the actual permission
+
   useEffect(() => {
     if (isOpen) {
       setTitle(card.title);
       setDescription(card.description || '');
       setAssignedUserIds(card.assignedUserIds || (card.assignedTo ? [card.assignedTo] : []));
       setDueDate(card.dueDate ? extractDatePart(card.dueDate) : '');
+      setPriority(card.priority || 'MEDIUM');
     }
   }, [card, isOpen]);
 
@@ -63,6 +69,7 @@ export default function CardDetailsModal({ card, boardId, isOpen, onClose }: Car
       description?: string;
       assignedUserIds?: number[];
       dueDate?: string;
+      priority?: string;
     }) => {
       // Build update payload - only include assignedUserIds if user is admin
       const updateData: any = {
@@ -76,6 +83,10 @@ export default function CardDetailsModal({ card, boardId, isOpen, onClose }: Car
       
       if (data.dueDate !== undefined) {
         updateData.dueDate = data.dueDate;
+      }
+      
+      if (data.priority !== undefined) {
+        updateData.priority = data.priority;
       }
       
       // Only include assignedUserIds if user is admin (they can change it)
@@ -108,6 +119,7 @@ export default function CardDetailsModal({ card, boardId, isOpen, onClose }: Car
       description: description.trim() || undefined,
       assignedUserIds: isAdmin() ? assignedUserIds : undefined, // Always send assignedUserIds for admins (even if empty array)
       dueDate: dueDate || undefined,
+      priority: priority,
     });
   };
 
@@ -233,6 +245,24 @@ export default function CardDetailsModal({ card, boardId, isOpen, onClose }: Car
               onChange={(e) => setDueDate(e.target.value)}
               className="w-full"
             />
+          </div>
+
+          {/* Priority */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              <Flag className="inline h-4 w-4 mr-1" />
+              Priority
+            </label>
+            <select
+              value={priority}
+              onChange={(e) => setPriority(e.target.value as 'LOW' | 'MEDIUM' | 'HIGH' | 'DONE')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="LOW">Low</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="HIGH">High</option>
+              <option value="DONE">Done</option>
+            </select>
           </div>
 
           {/* Card Info */}

@@ -20,6 +20,7 @@ export interface CardDTO {
   lastModifiedBy?: number;
   lastModifiedByName?: string;
   dueDate?: string;
+  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'DONE';
   createdAt: string;
   updatedAt: string;
 }
@@ -82,6 +83,7 @@ export interface CreateCardRequest {
   assignedTo?: number; // Deprecated, use assignedUserIds instead
   assignedUserIds?: number[]; // New: multiple assignees
   dueDate?: string;
+  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'DONE';
 }
 
 export interface MoveCardRequest {

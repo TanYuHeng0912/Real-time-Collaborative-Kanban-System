@@ -63,6 +63,15 @@ public class CardService {
             }
         }
         
+        Card.Priority priority = Card.Priority.MEDIUM;
+        if (request.getPriority() != null) {
+            try {
+                priority = Card.Priority.valueOf(request.getPriority().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                priority = Card.Priority.MEDIUM;
+            }
+        }
+        
         Card card = Card.builder()
                 .title(request.getTitle())
                 .description(request.getDescription())
@@ -73,6 +82,7 @@ public class CardService {
                 .assignedUsers(assignedUsers)
                 .lastModifiedBy(currentUser)
                 .dueDate(request.getDueDate())
+                .priority(priority)
                 .isDeleted(false)
                 .build();
         
@@ -165,6 +175,20 @@ public class CardService {
             // Convert LocalDate to LocalDateTime at start of day (00:00:00)
             card.setDueDate(request.getDueDate().atStartOfDay());
         }
+        if (request.getPriority() != null) {
+            // Only assigned users or owner can change priority
+            boolean canChangePriority = currentUser.getRole() == User.UserRole.ADMIN 
+                    || card.getCreatedBy().getId().equals(currentUser.getId())
+                    || card.getAssignedUsers().stream().anyMatch(u -> u.getId().equals(currentUser.getId()));
+            
+            if (canChangePriority) {
+                try {
+                    card.setPriority(Card.Priority.valueOf(request.getPriority().toUpperCase()));
+                } catch (IllegalArgumentException e) {
+                    // Invalid priority value, ignore
+                }
+            }
+        }
         
         card.setLastModifiedBy(currentUser);
         card = cardRepository.save(card);
@@ -254,6 +278,7 @@ public class CardService {
                 .lastModifiedBy(card.getLastModifiedBy() != null ? card.getLastModifiedBy().getId() : null)
                 .lastModifiedByName(card.getLastModifiedBy() != null ? formatUserName(card.getLastModifiedBy()) : null)
                 .dueDate(card.getDueDate())
+                .priority(card.getPriority() != null ? card.getPriority().name() : "MEDIUM")
                 .createdAt(card.getCreatedAt())
                 .updatedAt(card.getUpdatedAt())
                 .build();

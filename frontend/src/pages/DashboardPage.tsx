@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -12,6 +12,7 @@ import KanbanBoard from '@/components/KanbanBoard';
 import CreateBoardDialog from '@/components/CreateBoardDialog';
 import NoBoardsMessage from '@/components/NoBoardsMessage';
 import Navigation from '@/components/Navigation';
+import { Info } from 'lucide-react';
 
 export default function DashboardPage() {
   const { boardId } = useParams<{ boardId: string }>();
@@ -19,6 +20,7 @@ export default function DashboardPage() {
   const queryClient = useQueryClient();
   const { setCurrentBoard, currentBoard, updateCardOptimistic, moveCardOptimistic, deleteCardOptimistic, addCardOptimistic } = useKanbanStore();
   const isAdmin = useAuthStore((state) => state.isAdmin);
+  const [showPriorityLegend, setShowPriorityLegend] = useState(false);
   
   // Fetch workspaces and boards to check if user has any boards
   const { data: workspaces } = useQuery({
@@ -209,10 +211,53 @@ export default function DashboardPage() {
       <Navigation />
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="bg-white border-b border-gray-200 px-6 py-4">
-          <h1 className="text-2xl font-semibold text-gray-900">{currentBoard.name}</h1>
-          {currentBoard.description && (
-            <p className="text-gray-600 mt-1 text-sm">{currentBoard.description}</p>
-          )}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900">{currentBoard.name}</h1>
+              {currentBoard.description && (
+                <p className="text-gray-600 mt-1 text-sm">{currentBoard.description}</p>
+              )}
+            </div>
+            {/* Priority Guide */}
+            <div className="relative">
+              <button
+                onMouseEnter={() => setShowPriorityLegend(true)}
+                onMouseLeave={() => setShowPriorityLegend(false)}
+                className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <Info className="h-4 w-4 text-gray-500" />
+                <span className="text-sm text-gray-600 font-medium">Priority Guide</span>
+              </button>
+              
+              {showPriorityLegend && (
+                <div 
+                  className="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg p-4 z-50"
+                  onMouseEnter={() => setShowPriorityLegend(true)}
+                  onMouseLeave={() => setShowPriorityLegend(false)}
+                >
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Card Priority Colors</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-1 bg-red-500 rounded"></div>
+                      <span className="text-sm text-gray-700">High Priority</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-1 bg-yellow-500 rounded"></div>
+                      <span className="text-sm text-gray-700">Medium Priority</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-1 bg-blue-500 rounded"></div>
+                      <span className="text-sm text-gray-700">Low Priority</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-1 bg-green-500 rounded"></div>
+                      <span className="text-sm text-gray-700">Done</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
         <div className="flex-1 overflow-hidden">
           <KanbanBoard board={currentBoard} />

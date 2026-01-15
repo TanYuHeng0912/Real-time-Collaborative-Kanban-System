@@ -86,13 +86,28 @@ export default function KanbanCard({ card, index, listId, boardId }: KanbanCardP
   return (
     <>
       <Draggable draggableId={card.id.toString()} index={index}>
-      {(provided, snapshot) => (
+      {(provided, snapshot) => {
+        const getPriorityColor = (priority?: string) => {
+          switch (priority) {
+            case 'HIGH':
+              return 'border-l-red-500';
+            case 'LOW':
+              return 'border-l-blue-500';
+            case 'DONE':
+              return 'border-l-green-500';
+            case 'MEDIUM':
+            default:
+              return 'border-l-yellow-500';
+          }
+        };
+        
+        return (
         <div
           ref={provided.innerRef}
           {...provided.draggableProps}
-          className={`bg-white rounded border border-gray-200 cursor-move hover:shadow-md transition-shadow ${
+          className={`bg-white rounded border border-gray-200 border-l-4 cursor-move hover:shadow-md transition-shadow ${
             snapshot.isDragging ? 'shadow-lg ring-2 ring-blue-500' : 'shadow-sm'
-          }`}
+          } ${getPriorityColor(card.priority || 'MEDIUM')}`}
         >
           <div {...provided.dragHandleProps} className="p-3">
             {isEditing ? (
@@ -217,7 +232,8 @@ export default function KanbanCard({ card, index, listId, boardId }: KanbanCardP
             )}
           </div>
         </div>
-      )}
+        );
+      }}
       </Draggable>
       <CardDetailsModal
         card={card}

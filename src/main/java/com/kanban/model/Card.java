@@ -62,9 +62,18 @@ public class Card {
     @Column(name = "due_date")
     private LocalDateTime dueDate;
     
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    @Builder.Default
+    private Priority priority = Priority.MEDIUM;
+    
     @Column(name = "is_deleted", nullable = false)
     @Builder.Default
     private Boolean isDeleted = false;
+    
+    public enum Priority {
+        LOW, MEDIUM, HIGH, DONE
+    }
     
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

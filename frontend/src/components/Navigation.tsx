@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import {
   DropdownMenu,
@@ -9,12 +9,17 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { LogOut, Shield } from 'lucide-react';
+import { LogOut, Shield, BarChart3 } from 'lucide-react';
 import BoardSelector from './BoardSelector';
 
 export default function Navigation() {
   const { user, logout, isAdmin } = useAuthStore();
   const navigate = useNavigate();
+  const { boardId } = useParams<{ boardId: string }>();
+  const location = useLocation();
+  
+  // Show Gantt link when viewing a board (either in dashboard or gantt view)
+  const showGanttLink = !!boardId && (location.pathname.includes('/dashboard/') || location.pathname.includes('/gantt/'));
 
   const handleLogout = () => {
     logout();
@@ -49,6 +54,17 @@ export default function Navigation() {
           <span className="text-xl font-semibold text-gray-900">Kanban</span>
         </div>
         <BoardSelector />
+        {showGanttLink && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(`/gantt/${boardId}`)}
+            className="flex items-center gap-2"
+          >
+            <BarChart3 className="h-4 w-4" />
+            <span>Gantt Chart</span>
+          </Button>
+        )}
       </div>
 
       <div className="flex items-center gap-4">

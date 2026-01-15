@@ -22,5 +22,6 @@ public class CreateCardRequest {
     private Long assignedTo; // Deprecated, use assignedUserIds instead
     private List<Long> assignedUserIds; // New: multiple assignees
     private LocalDateTime dueDate;
+    private String priority; // LOW, MEDIUM, HIGH
 }
 
