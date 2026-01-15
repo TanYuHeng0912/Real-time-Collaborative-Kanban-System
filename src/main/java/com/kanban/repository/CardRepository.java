@@ -12,7 +12,7 @@ import java.util.Optional;
 
 @Repository
 public interface CardRepository extends JpaRepository<Card, Long> {
-    @EntityGraph(attributePaths = {"createdBy", "assignedTo", "assignedUsers", "lastModifiedBy"})
+    @EntityGraph(attributePaths = {"createdBy", "assignedTo", "assignedUsers", "lastModifiedBy", "list"})
     Optional<Card> findByIdAndIsDeletedFalse(Long id);
     
     @EntityGraph(attributePaths = {"createdBy", "assignedTo", "assignedUsers", "lastModifiedBy"})
@@ -20,5 +20,8 @@ public interface CardRepository extends JpaRepository<Card, Long> {
     
     @Query("SELECT MAX(c.position) FROM Card c WHERE c.list.id = :listId AND c.isDeleted = false")
     Integer findMaxPositionByListId(@Param("listId") Long listId);
+    
+    @Query("SELECT c.list.id FROM Card c WHERE c.id = :cardId AND c.isDeleted = false")
+    Optional<Long> findListIdByCardId(@Param("cardId") Long cardId);
 }
 

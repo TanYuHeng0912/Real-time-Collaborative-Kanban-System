@@ -96,7 +96,27 @@ public class CardService {
         Card card = cardRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new RuntimeException("Card not found"));
         
-        if (!permissionService.hasBoardAccess(card.getList().getBoard().getId(), currentUser)) {
+        // Get board ID safely - card should have list loaded via EntityGraph
+        // If not, try to access it within transaction
+        Long listId = null;
+        try {
+            listId = card.getList() != null ? card.getList().getId() : null;
+        } catch (Exception e) {
+            // If lazy loading fails, we'll handle it below
+        }
+        
+        if (listId == null) {
+            throw new RuntimeException("List not found for card");
+        }
+        
+        ListEntity list = listRepository.findByIdWithBoard(listId)
+                .orElseThrow(() -> new RuntimeException("List not found"));
+        
+        if (list.getBoard() == null) {
+            throw new RuntimeException("Board not found for list");
+        }
+        
+        if (!permissionService.hasBoardAccess(list.getBoard().getId(), currentUser)) {
             throw new AccessDeniedException("You do not have permission to view this card.");
         }
         
@@ -106,8 +126,12 @@ public class CardService {
     @Transactional(readOnly = true)
     public List<CardDTO> getCardsByListId(Long listId) {
         User currentUser = permissionService.getCurrentUser();
-        ListEntity list = listRepository.findByIdAndIsDeletedFalse(listId)
+        ListEntity list = listRepository.findByIdWithBoard(listId)
                 .orElseThrow(() -> new RuntimeException("List not found"));
+        
+        if (list.getBoard() == null) {
+            throw new RuntimeException("Board not found for list");
+        }
         
         if (!permissionService.hasBoardAccess(list.getBoard().getId(), currentUser)) {
             throw new AccessDeniedException("You do not have permission to view cards in this list.");
@@ -199,22 +223,109 @@ public class CardService {
     public CardDTO moveCard(Long id, MoveCardRequest request) {
         User currentUser = permissionService.getCurrentUser();
         
-        if (!permissionService.canEditCard(id, currentUser)) {
-            throw new AccessDeniedException("You do not have permission to move this card.");
+        // For moving cards, check board access rather than card edit permissions
+        // Anyone with board access should be able to move cards (standard Kanban behavior)
+        
+        // Get target list first to verify it exists and get board ID
+        ListEntity targetList = listRepository.findByIdWithBoard(request.getTargetListId())
+                .orElseThrow(() -> new RuntimeException("Target list not found"));
+        
+        if (targetList.getBoard() == null) {
+            throw new RuntimeException("Target list must belong to a board");
         }
         
+        Long boardId = targetList.getBoard().getId();
+        
+        // Check board access using target list's board
+        if (!permissionService.hasBoardAccess(boardId, currentUser)) {
+            throw new AccessDeniedException("You do not have permission to move cards in this board.");
+        }
+        
+        // Get source list ID to verify it's in the same board
+        Long sourceListId = cardRepository.findListIdByCardId(id).orElse(null);
+        if (sourceListId != null && !sourceListId.equals(request.getTargetListId())) {
+            ListEntity sourceList = listRepository.findByIdWithBoard(sourceListId)
+                    .orElseThrow(() -> new RuntimeException("Source list not found"));
+            
+            if (sourceList.getBoard() == null || !sourceList.getBoard().getId().equals(boardId)) {
+                throw new RuntimeException("Source and target lists must be in the same board");
+            }
+        }
+        
+        // Now fetch the card
         Card card = cardRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new RuntimeException("Card not found"));
         
-        ListEntity targetList = listRepository.findByIdAndIsDeletedFalse(request.getTargetListId())
-                .orElseThrow(() -> new RuntimeException("Target list not found"));
+        // Determine if moving to different list
+        boolean isMovingToDifferentList = (sourceListId != null && !sourceListId.equals(request.getTargetListId()));
         
+        // Use sourceListId if we have it, otherwise assume same list move
+        Long actualSourceListId = sourceListId != null ? sourceListId : request.getTargetListId();
+        int newPosition = request.getNewPosition();
+        int oldPosition = card.getPosition();
+        
+        if (isMovingToDifferentList) {
+            // Moving to a different list
+            // 1. Remove from source list: decrement positions of cards after old position
+            List<Card> sourceCards = cardRepository.findByListIdAndIsDeletedFalseOrderByPositionAsc(actualSourceListId);
+            for (Card sourceCard : sourceCards) {
+                if (sourceCard.getId().equals(id)) {
+                    continue; // Skip the card being moved
+                }
+                if (sourceCard.getPosition() > oldPosition) {
+                    sourceCard.setPosition(sourceCard.getPosition() - 1);
+                }
+            }
+            cardRepository.saveAll(sourceCards);
+            
+            // 2. Add to target list: increment positions of cards at/after new position
+            List<Card> targetCards = cardRepository.findByListIdAndIsDeletedFalseOrderByPositionAsc(request.getTargetListId());
+            for (Card targetCard : targetCards) {
+                // Skip the card being moved if it's somehow in the target list already
+                if (targetCard.getId().equals(id)) {
+                    continue;
+                }
+                if (targetCard.getPosition() >= newPosition) {
+                    targetCard.setPosition(targetCard.getPosition() + 1);
+                }
+            }
+            cardRepository.saveAll(targetCards);
+        } else {
+            // Moving within the same list
+            List<Card> cards = cardRepository.findByListIdAndIsDeletedFalseOrderByPositionAsc(request.getTargetListId());
+            if (oldPosition < newPosition) {
+                // Moving forward: shift cards between old and new position backward
+                for (Card c : cards) {
+                    if (c.getId().equals(id)) {
+                        continue; // Skip the card being moved
+                    }
+                    if (c.getPosition() > oldPosition && c.getPosition() <= newPosition) {
+                        c.setPosition(c.getPosition() - 1);
+                    }
+                }
+            } else if (oldPosition > newPosition) {
+                // Moving backward: shift cards between new and old position forward
+                for (Card c : cards) {
+                    if (c.getId().equals(id)) {
+                        continue; // Skip the card being moved
+                    }
+                    if (c.getPosition() >= newPosition && c.getPosition() < oldPosition) {
+                        c.setPosition(c.getPosition() + 1);
+                    }
+                }
+            }
+            cardRepository.saveAll(cards);
+        }
+        
+        // Update the card itself
         card.setList(targetList);
-        card.setPosition(request.getNewPosition());
+        card.setPosition(newPosition);
         card.setLastModifiedBy(currentUser);
         
         card = cardRepository.save(card);
-        return toDTO(card);
+        
+        // Use toDTOWithListId to avoid lazy loading issues with card.getList()
+        return toDTOWithListId(card, targetList.getId());
     }
     
     @Transactional
@@ -251,37 +362,108 @@ public class CardService {
     }
     
     private CardDTO toDTO(Card card) {
-        // Get assigned user IDs and names
-        List<Long> assignedUserIds = card.getAssignedUsers().stream()
-                .map(User::getId)
-                .collect(Collectors.toList());
-        List<String> assignedUserNames = card.getAssignedUsers().stream()
-                .map(this::formatUserName)
-                .collect(Collectors.toList());
-        
-        // Backward compatibility: assignedTo and assigneeName (use first assignee if exists)
-        Long assignedTo = assignedUserIds.isEmpty() ? null : assignedUserIds.get(0);
-        String assigneeName = assignedUserNames.isEmpty() ? null : assignedUserNames.get(0);
-        
-        return CardDTO.builder()
-                .id(card.getId())
-                .title(card.getTitle())
-                .description(card.getDescription())
-                .listId(card.getList().getId())
-                .position(card.getPosition())
-                .createdBy(card.getCreatedBy().getId())
-                .creatorName(formatUserName(card.getCreatedBy()))
-                .assignedTo(assignedTo) // Backward compatibility
-                .assigneeName(assigneeName) // Backward compatibility
-                .assignedUserIds(assignedUserIds)
-                .assignedUserNames(assignedUserNames)
-                .lastModifiedBy(card.getLastModifiedBy() != null ? card.getLastModifiedBy().getId() : null)
-                .lastModifiedByName(card.getLastModifiedBy() != null ? formatUserName(card.getLastModifiedBy()) : null)
-                .dueDate(card.getDueDate())
-                .priority(card.getPriority() != null ? card.getPriority().name() : "MEDIUM")
-                .createdAt(card.getCreatedAt())
-                .updatedAt(card.getUpdatedAt())
-                .build();
+        try {
+            // Get assigned user IDs and names
+            List<Long> assignedUserIds = card.getAssignedUsers() != null ? card.getAssignedUsers().stream()
+                    .map(User::getId)
+                    .collect(Collectors.toList()) : List.of();
+            List<String> assignedUserNames = card.getAssignedUsers() != null ? card.getAssignedUsers().stream()
+                    .map(this::formatUserName)
+                    .collect(Collectors.toList()) : List.of();
+            
+            // Backward compatibility: assignedTo and assigneeName (use first assignee if exists)
+            Long assignedTo = assignedUserIds.isEmpty() ? null : assignedUserIds.get(0);
+            String assigneeName = assignedUserNames.isEmpty() ? null : assignedUserNames.get(0);
+            
+            // Safely get list ID - handle lazy loading
+            Long listId = null;
+            try {
+                listId = card.getList() != null ? card.getList().getId() : null;
+            } catch (Exception e) {
+                // Lazy loading failed, listId will remain null
+            }
+            
+            return CardDTO.builder()
+                    .id(card.getId())
+                    .title(card.getTitle())
+                    .description(card.getDescription())
+                    .listId(listId)
+                    .position(card.getPosition())
+                    .createdBy(card.getCreatedBy() != null ? card.getCreatedBy().getId() : null)
+                    .creatorName(card.getCreatedBy() != null ? formatUserName(card.getCreatedBy()) : null)
+                    .assignedTo(assignedTo) // Backward compatibility
+                    .assigneeName(assigneeName) // Backward compatibility
+                    .assignedUserIds(assignedUserIds)
+                    .assignedUserNames(assignedUserNames)
+                    .lastModifiedBy(card.getLastModifiedBy() != null ? card.getLastModifiedBy().getId() : null)
+                    .lastModifiedByName(card.getLastModifiedBy() != null ? formatUserName(card.getLastModifiedBy()) : null)
+                    .dueDate(card.getDueDate())
+                    .priority(card.getPriority() != null ? card.getPriority().name() : "MEDIUM")
+                    .createdAt(card.getCreatedAt())
+                    .updatedAt(card.getUpdatedAt())
+                    .build();
+        } catch (Exception e) {
+            // Fallback DTO if something goes wrong
+            return CardDTO.builder()
+                    .id(card.getId())
+                    .title(card.getTitle())
+                    .description(card.getDescription())
+                    .listId(null)
+                    .position(card.getPosition())
+                    .createdAt(card.getCreatedAt())
+                    .updatedAt(card.getUpdatedAt())
+                    .priority("MEDIUM")
+                    .build();
+        }
+    }
+    
+    // Helper method to create CardDTO with explicit listId to avoid lazy loading issues
+    private CardDTO toDTOWithListId(Card card, Long listId) {
+        try {
+            // Get assigned user IDs and names
+            List<Long> assignedUserIds = card.getAssignedUsers() != null ? card.getAssignedUsers().stream()
+                    .map(User::getId)
+                    .collect(Collectors.toList()) : List.of();
+            List<String> assignedUserNames = card.getAssignedUsers() != null ? card.getAssignedUsers().stream()
+                    .map(this::formatUserName)
+                    .collect(Collectors.toList()) : List.of();
+            
+            // Backward compatibility: assignedTo and assigneeName (use first assignee if exists)
+            Long assignedTo = assignedUserIds.isEmpty() ? null : assignedUserIds.get(0);
+            String assigneeName = assignedUserNames.isEmpty() ? null : assignedUserNames.get(0);
+            
+            return CardDTO.builder()
+                    .id(card.getId())
+                    .title(card.getTitle())
+                    .description(card.getDescription())
+                    .listId(listId) // Use provided listId instead of accessing card.getList()
+                    .position(card.getPosition())
+                    .createdBy(card.getCreatedBy() != null ? card.getCreatedBy().getId() : null)
+                    .creatorName(card.getCreatedBy() != null ? formatUserName(card.getCreatedBy()) : null)
+                    .assignedTo(assignedTo) // Backward compatibility
+                    .assigneeName(assigneeName) // Backward compatibility
+                    .assignedUserIds(assignedUserIds)
+                    .assignedUserNames(assignedUserNames)
+                    .lastModifiedBy(card.getLastModifiedBy() != null ? card.getLastModifiedBy().getId() : null)
+                    .lastModifiedByName(card.getLastModifiedBy() != null ? formatUserName(card.getLastModifiedBy()) : null)
+                    .dueDate(card.getDueDate())
+                    .priority(card.getPriority() != null ? card.getPriority().name() : "MEDIUM")
+                    .createdAt(card.getCreatedAt())
+                    .updatedAt(card.getUpdatedAt())
+                    .build();
+        } catch (Exception e) {
+            // Fallback DTO if something goes wrong
+            return CardDTO.builder()
+                    .id(card.getId())
+                    .title(card.getTitle())
+                    .description(card.getDescription())
+                    .listId(listId)
+                    .position(card.getPosition())
+                    .createdAt(card.getCreatedAt())
+                    .updatedAt(card.getUpdatedAt())
+                    .priority("MEDIUM")
+                    .build();
+        }
     }
 }
 

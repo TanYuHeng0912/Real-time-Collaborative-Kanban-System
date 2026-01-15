@@ -24,5 +24,10 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
     
     @Query("SELECT b FROM Board b WHERE b.id = :id AND b.isDeleted = false")
     Optional<Board> findByIdWithLists(@Param("id") Long id);
+    
+    @Query("SELECT b FROM Board b " +
+           "LEFT JOIN FETCH b.workspace " +
+           "WHERE b.id = :id AND b.isDeleted = false")
+    Optional<Board> findByIdWithWorkspace(@Param("id") Long id);
 }
 

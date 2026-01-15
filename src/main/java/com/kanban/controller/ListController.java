@@ -3,6 +3,7 @@ package com.kanban.controller;
 import com.kanban.dto.BoardUpdateMessage;
 import com.kanban.dto.CreateListRequest;
 import com.kanban.dto.ListDTO;
+import com.kanban.dto.MoveListRequest;
 import com.kanban.model.User;
 import com.kanban.repository.BoardRepository;
 import com.kanban.service.ListService;
@@ -86,6 +87,24 @@ public class ListController {
         messagingTemplate.convertAndSend("/topic/board/" + boardId, message);
         
         return ResponseEntity.noContent().build();
+    }
+    
+    @PostMapping("/{id}/move")
+    public ResponseEntity<ListDTO> moveList(
+            @PathVariable Long id,
+            @Valid @RequestBody MoveListRequest request
+    ) {
+        ListDTO list = listService.moveList(id, request);
+        
+        // Broadcast list move to board subscribers
+        User currentUser = permissionService.getCurrentUser();
+        String userName = currentUser.getFullName() != null ? currentUser.getFullName() : currentUser.getUsername();
+        
+        BoardUpdateMessage message = new BoardUpdateMessage("LIST_MOVED", null, list, null, list.getBoardId(),
+                null, null, null, currentUser.getId(), userName);
+        messagingTemplate.convertAndSend("/topic/board/" + list.getBoardId(), message);
+        
+        return ResponseEntity.ok(list);
     }
 }
 

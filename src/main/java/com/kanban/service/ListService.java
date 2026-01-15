@@ -2,12 +2,15 @@ package com.kanban.service;
 
 import com.kanban.dto.CreateListRequest;
 import com.kanban.dto.ListDTO;
+import com.kanban.dto.MoveListRequest;
 import com.kanban.model.Board;
 import com.kanban.model.Card;
 import com.kanban.model.ListEntity;
+import com.kanban.model.User;
 import com.kanban.repository.BoardRepository;
 import com.kanban.repository.ListRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -63,11 +66,11 @@ public class ListService {
     
     @Transactional
     public ListDTO updateList(Long id, CreateListRequest request) {
-        permissionService.verifyBoardAccess(
-            listRepository.findByIdAndIsDeletedFalse(id)
-                .orElseThrow(() -> new RuntimeException("List not found"))
-                .getBoard().getId()
-        );
+        User currentUser = permissionService.getCurrentUser();
+        
+        if (!permissionService.canEditList(id, currentUser)) {
+            throw new AccessDeniedException("You do not have permission to edit this list.");
+        }
         
         ListEntity list = listRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new RuntimeException("List not found"));
@@ -83,28 +86,114 @@ public class ListService {
     
     @Transactional
     public void deleteList(Long id) {
+        User currentUser = permissionService.getCurrentUser();
+        
+        if (!permissionService.canDeleteList(id, currentUser)) {
+            throw new AccessDeniedException("You do not have permission to delete this list.");
+        }
+        
         ListEntity list = listRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new RuntimeException("List not found"));
-        
-        permissionService.verifyBoardAccess(list.getBoard().getId());
         
         list.setIsDeleted(true);
         listRepository.save(list);
     }
     
+    @Transactional
+    public ListDTO moveList(Long id, MoveListRequest request) {
+        // Fetch list with board to avoid lazy loading issues
+        ListEntity list = listRepository.findByIdWithBoard(id)
+                .orElseThrow(() -> new RuntimeException("List not found"));
+        
+        if (list.getBoard() == null) {
+            throw new RuntimeException("Board not found for list");
+        }
+        
+        // Get board ID
+        Long boardId = list.getBoard().getId();
+        
+        // Fetch board with workspace to avoid lazy loading issues
+        Board board = boardRepository.findByIdWithWorkspace(boardId)
+                .orElseThrow(() -> new RuntimeException("Board not found"));
+        
+        if (board.getWorkspace() == null) {
+            throw new RuntimeException("Workspace not found for board");
+        }
+        
+        // Only workspace owner/admin can reorder lists
+        User currentUser = permissionService.getCurrentUser();
+        if (!permissionService.isWorkspaceOwnerOrAdmin(board.getWorkspace().getId(), currentUser)) {
+            throw new AccessDeniedException("Only workspace owners or admins can reorder lists.");
+        }
+        
+        Integer oldPosition = list.getPosition();
+        Integer newPosition = request.getNewPosition();
+        
+        if (oldPosition != null && oldPosition.equals(newPosition)) {
+            return toDTO(list);
+        }
+        
+        List<ListEntity> allLists = listRepository.findByBoardIdAndIsDeletedFalseOrderByPositionAsc(boardId);
+        
+        // Remove the moving list from the list
+        allLists.removeIf(l -> l.getId().equals(id));
+        
+        // Insert at new position
+        if (newPosition == null) {
+            newPosition = allLists.size();
+        } else if (newPosition < 0) {
+            newPosition = 0;
+        } else if (newPosition >= allLists.size()) {
+            newPosition = allLists.size();
+        }
+        
+        allLists.add(newPosition, list);
+        
+        // Update positions for all affected lists
+        for (int i = 0; i < allLists.size(); i++) {
+            allLists.get(i).setPosition(i);
+        }
+        
+        List<ListEntity> savedLists = listRepository.saveAll(allLists);
+        // Find the updated list from saved lists
+        ListEntity updatedList = savedLists.stream()
+                .filter(l -> l.getId().equals(id))
+                .findFirst()
+                .orElse(list);
+        
+        // Fetch the list again with cards to avoid lazy loading issues in toDTO
+        ListEntity refreshedList = listRepository.findByIdWithCards(updatedList.getId())
+                .orElse(updatedList);
+        
+        return toDTO(refreshedList);
+    }
+    
     private ListDTO toDTO(ListEntity list) {
-        return ListDTO.builder()
-                .id(list.getId())
-                .name(list.getName())
-                .boardId(list.getBoard().getId())
-                .position(list.getPosition())
-                .createdAt(list.getCreatedAt())
-                .updatedAt(list.getUpdatedAt())
-                .cards(list.getCards().stream()
-                        .filter(card -> !card.getIsDeleted())
-                        .map(this::cardToDTO)
-                        .collect(Collectors.toList()))
-                .build();
+        try {
+            return ListDTO.builder()
+                    .id(list.getId())
+                    .name(list.getName())
+                    .boardId(list.getBoard() != null ? list.getBoard().getId() : null)
+                    .position(list.getPosition())
+                    .createdAt(list.getCreatedAt())
+                    .updatedAt(list.getUpdatedAt())
+                    .cards(list.getCards() != null ? list.getCards().stream()
+                            .filter(card -> !card.getIsDeleted())
+                            .map(this::cardToDTO)
+                            .collect(Collectors.toList()) : List.of())
+                    .build();
+        } catch (Exception e) {
+            // If lazy loading fails, return DTO without cards
+            return ListDTO.builder()
+                    .id(list.getId())
+                    .name(list.getName())
+                    .boardId(list.getBoard() != null ? list.getBoard().getId() : null)
+                    .position(list.getPosition())
+                    .createdAt(list.getCreatedAt())
+                    .updatedAt(list.getUpdatedAt())
+                    .cards(List.of())
+                    .build();
+        }
     }
     
     private com.kanban.dto.CardDTO cardToDTO(Card card) {

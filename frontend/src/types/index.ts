@@ -91,6 +91,10 @@ export interface MoveCardRequest {
   newPosition: number;
 }
 
+export interface MoveListRequest {
+  newPosition: number;
+}
+
 export interface WorkspaceDTO {
   id: number;
   name: string;

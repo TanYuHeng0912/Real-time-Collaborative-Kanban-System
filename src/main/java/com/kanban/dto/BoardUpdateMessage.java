@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class BoardUpdateMessage {
-    private String type; // "CARD_CREATED", "CARD_UPDATED", "CARD_MOVED", "CARD_DELETED", "LIST_CREATED", "LIST_UPDATED", "LIST_DELETED", "BOARD_CREATED", "BOARD_UPDATED", "BOARD_DELETED"
+    private String type; // "CARD_CREATED", "CARD_UPDATED", "CARD_MOVED", "CARD_DELETED", "LIST_CREATED", "LIST_UPDATED", "LIST_DELETED", "LIST_MOVED", "BOARD_CREATED", "BOARD_UPDATED", "BOARD_DELETED"
     private CardDTO card;
     private ListDTO list;
     private BoardDTO board; // For board operations

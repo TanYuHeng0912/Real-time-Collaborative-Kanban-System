@@ -1,5 +1,5 @@
 import api from '@/lib/api';
-import { BoardDTO, ListDTO, CardDTO, CreateCardRequest, CreateListRequest, MoveCardRequest } from '@/types';
+import { BoardDTO, ListDTO, CardDTO, CreateCardRequest, CreateListRequest, MoveCardRequest, MoveListRequest } from '@/types';
 
 export interface CreateBoardRequest {
   name: string;
@@ -68,6 +68,11 @@ export const boardService = {
   
   deleteBoard: async (boardId: number): Promise<void> => {
     await api.delete(`/boards/${boardId}`);
+  },
+  
+  moveList: async (listId: number, data: MoveListRequest): Promise<ListDTO> => {
+    const response = await api.post<ListDTO>(`/lists/${listId}/move`, data);
+    return response.data;
   },
 };
 

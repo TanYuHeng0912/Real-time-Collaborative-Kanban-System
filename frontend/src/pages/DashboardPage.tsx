@@ -89,6 +89,12 @@ export default function DashboardPage() {
         case 'LIST_DELETED':
           toast.success(`${userName} deleted a list`);
           break;
+        case 'LIST_MOVED':
+          toast.success(`${userName} moved list "${listName}"`, {
+            id: `list-moved-${message.list?.id}-${Date.now()}`,
+            duration: 3000,
+          });
+          break;
       }
       
       // Refetch board data to get updated lists
@@ -119,7 +125,10 @@ export default function DashboardPage() {
         if (message.card) {
           moveCardOptimistic(message.card.id, message.card.listId, message.card.position);
           const listName = currentBoard.lists.find(l => l.id === message.card?.listId)?.name || 'another list';
-          toast.success(`${userName} moved "${cardTitle}" to ${listName}`);
+          toast.success(`${userName} moved "${cardTitle}" to ${listName}`, {
+            id: `card-moved-${message.card?.id}-${Date.now()}`,
+            duration: 3000,
+          });
         }
         break;
       case 'DELETED':

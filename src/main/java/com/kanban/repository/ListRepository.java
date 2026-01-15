@@ -14,7 +14,15 @@ public interface ListRepository extends JpaRepository<ListEntity, Long> {
     Optional<ListEntity> findByIdAndIsDeletedFalse(Long id);
     List<ListEntity> findByBoardIdAndIsDeletedFalseOrderByPositionAsc(Long boardId);
     
-    @Query("SELECT l FROM ListEntity l WHERE l.id = :id AND l.isDeleted = false")
+    @Query("SELECT l FROM ListEntity l " +
+           "LEFT JOIN FETCH l.cards c " +
+           "WHERE l.id = :id AND l.isDeleted = false " +
+           "AND (c IS NULL OR c.isDeleted = false)")
     Optional<ListEntity> findByIdWithCards(@Param("id") Long id);
+    
+    @Query("SELECT l FROM ListEntity l " +
+           "LEFT JOIN FETCH l.board b " +
+           "WHERE l.id = :id AND l.isDeleted = false")
+    Optional<ListEntity> findByIdWithBoard(@Param("id") Long id);
 }
 

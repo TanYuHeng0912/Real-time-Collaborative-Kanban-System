@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Droppable } from '@hello-pangea/dnd';
+import { Droppable, Draggable } from '@hello-pangea/dnd';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { boardService } from '@/services/boardService';
@@ -8,13 +8,17 @@ import KanbanCard from './KanbanCard';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Trash2, Edit2 } from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
 
 interface KanbanListProps {
   list: ListDTO;
+  index: number;
+  isDraggable?: boolean;
 }
 
-export default function KanbanList({ list }: KanbanListProps) {
+export default function KanbanList({ list, index, isDraggable = false }: KanbanListProps) {
   const queryClient = useQueryClient();
+  const isAdmin = useAuthStore((state) => state.isAdmin);
   const [isCreatingCard, setIsCreatingCard] = useState(false);
   const [newCardTitle, setNewCardTitle] = useState('');
   const [isEditingList, setIsEditingList] = useState(false);
@@ -82,7 +86,7 @@ export default function KanbanList({ list }: KanbanListProps) {
     }
   };
 
-  return (
+  const listContent = (
     <div className="flex-shrink-0 w-80 bg-white rounded-lg border border-gray-200 shadow-sm">
       <div className="p-3 border-b border-gray-200">
         {isEditingList ? (
@@ -114,37 +118,40 @@ export default function KanbanList({ list }: KanbanListProps) {
         ) : (
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-sm text-gray-900 uppercase tracking-wide flex-1">{list.name}</h2>
-            <div className="flex gap-1 ml-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-gray-400 hover:text-gray-600"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleEditList();
-                }}
-              >
-                <Edit2 className="h-3 w-3" />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-gray-400 hover:text-red-600"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeleteList();
-                }}
-                disabled={deleteListMutation.isPending}
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
-            </div>
+            {/* Only show edit/delete buttons for admins */}
+            {isAdmin() && (
+              <div className="flex gap-1 ml-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-gray-400 hover:text-gray-600"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditList();
+                  }}
+                >
+                  <Edit2 className="h-3 w-3" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-gray-400 hover:text-red-600"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteList();
+                  }}
+                  disabled={deleteListMutation.isPending}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
-      <Droppable droppableId={list.id.toString()}>
+      <Droppable droppableId={list.id.toString()} type="CARD">
         {(provided, snapshot) => (
           <div
             ref={provided.innerRef}
@@ -197,5 +204,142 @@ export default function KanbanList({ list }: KanbanListProps) {
       </Droppable>
     </div>
   );
+
+  if (isDraggable) {
+    return (
+      <Draggable draggableId={`list-${list.id}`} index={index}>
+        {(provided, snapshot) => (
+          <div
+            ref={provided.innerRef}
+            {...provided.draggableProps}
+            className={snapshot.isDragging ? 'opacity-75' : ''}
+          >
+            <div className="flex-shrink-0 w-80 bg-white rounded-lg border border-gray-200 shadow-sm">
+              {/* Only the header is draggable for lists */}
+              <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing">
+                <div className="p-3 border-b border-gray-200">
+                  {isEditingList ? (
+                    <form onSubmit={handleSaveList} className="flex items-center gap-2">
+                      <Input
+                        autoFocus
+                        value={editListName}
+                        onChange={(e) => setEditListName(e.target.value)}
+                        className="h-7 text-sm font-semibold uppercase"
+                      />
+                      <Button
+                        type="submit"
+                        size="sm"
+                        className="h-7 text-xs"
+                        disabled={updateListMutation.isPending}
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-xs"
+                        onClick={handleCancelEditList}
+                      >
+                        Cancel
+                      </Button>
+                    </form>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <h2 className="font-semibold text-sm text-gray-900 uppercase tracking-wide flex-1">{list.name}</h2>
+                      {/* Only show edit/delete buttons for admins */}
+                      {isAdmin() && (
+                        <div className="flex gap-1 ml-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-gray-400 hover:text-gray-600"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditList();
+                            }}
+                          >
+                            <Edit2 className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-gray-400 hover:text-red-600"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteList();
+                            }}
+                            disabled={deleteListMutation.isPending}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+              {/* Cards area is NOT part of list drag handle */}
+              <Droppable droppableId={list.id.toString()} type="CARD">
+                {(provided, snapshot) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    className={`flex flex-col gap-2 p-3 min-h-[200px] ${
+                      snapshot.isDraggingOver ? 'bg-blue-50' : 'bg-gray-50'
+                    }`}
+                  >
+                    {list.cards.map((card, index) => (
+                      <KanbanCard key={card.id} card={card} index={index} listId={list.id} boardId={list.boardId} />
+                    ))}
+                    {provided.placeholder}
+                    {isCreatingCard ? (
+                      <form onSubmit={handleCreateCard} className="bg-white rounded border border-gray-200 p-2 shadow-sm">
+                        <Input
+                          autoFocus
+                          value={newCardTitle}
+                          onChange={(e) => setNewCardTitle(e.target.value)}
+                          placeholder="Enter card title"
+                          className="mb-2 h-8 text-sm"
+                        />
+                        <div className="flex gap-2">
+                          <Button type="submit" size="sm" disabled={createCardMutation.isPending} className="h-7 text-xs">
+                            Add
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 text-xs"
+                            onClick={() => {
+                              setIsCreatingCard(false);
+                              setNewCardTitle('');
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </form>
+                    ) : (
+                      <button
+                        onClick={() => setIsCreatingCard(true)}
+                        className="w-full text-left px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
+                      >
+                        + Add a card
+                      </button>
+                    )}
+                  </div>
+                )}
+              </Droppable>
+            </div>
+          </div>
+        )}
+      </Draggable>
+    );
+  }
+
+  return listContent;
 }
 

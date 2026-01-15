@@ -54,6 +54,15 @@ export default function GanttChartPage() {
     return diffDays;
   }, [dateRange]);
 
+  // Determine view type based on date range
+  type ViewType = 'daily' | 'weekly' | 'monthly' | 'yearly';
+  const viewType: ViewType = useMemo(() => {
+    if (daysInRange <= 30) return 'daily';
+    if (daysInRange <= 90) return 'weekly';
+    if (daysInRange <= 365) return 'monthly';
+    return 'yearly';
+  }, [daysInRange]);
+
   const getPriorityColor = (priority?: string) => {
     switch (priority) {
       case 'HIGH':
@@ -75,8 +84,11 @@ export default function GanttChartPage() {
   };
 
   const getWidthForCard = (card: CardDTO) => {
-    // Default width is 5% of the range, but can be adjusted
-    const baseWidth = 5;
+    // Adjust width based on view type
+    let baseWidth = 5;
+    if (viewType === 'yearly') baseWidth = 2;
+    else if (viewType === 'monthly') baseWidth = 3;
+    else if (viewType === 'weekly') baseWidth = 4;
     return Math.max(baseWidth, (1 / daysInRange) * 100);
   };
 
@@ -129,16 +141,120 @@ export default function GanttChartPage() {
     );
   }
 
-  // Generate date labels
-  const dateLabels: Date[] = [];
-  const currentDate = new Date(dateRange.min);
-  while (currentDate <= dateRange.max) {
-    dateLabels.push(new Date(currentDate));
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
+  // Generate time labels based on view type
+  const timeLabels = useMemo(() => {
+    const labels: { date: Date; label: string; isWeekend?: boolean; isFirstOfPeriod?: boolean }[] = [];
+    
+    if (viewType === 'daily') {
+      // Daily view: show each day
+      const currentDate = new Date(dateRange.min);
+      while (currentDate <= dateRange.max) {
+        labels.push({
+          date: new Date(currentDate),
+          label: currentDate.getDate().toString(),
+          isWeekend: currentDate.getDay() === 0 || currentDate.getDay() === 6,
+          isFirstOfPeriod: currentDate.getDate() === 1,
+        });
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+    } else if (viewType === 'weekly') {
+      // Weekly view: show each week (start of week - Sunday)
+      const currentDate = new Date(dateRange.min);
+      // Move to start of week (Sunday)
+      const dayOfWeek = currentDate.getDay();
+      currentDate.setDate(currentDate.getDate() - dayOfWeek);
+      
+      // Adjust to ensure we don't go before min date
+      if (currentDate < dateRange.min) {
+        currentDate.setDate(currentDate.getDate() + 7);
+      }
+      
+      while (currentDate <= dateRange.max) {
+        labels.push({
+          date: new Date(currentDate),
+          label: `${currentDate.getMonth() + 1}/${currentDate.getDate()}`,
+          isFirstOfPeriod: currentDate.getDate() <= 7 && currentDate.getMonth() === dateRange.min.getMonth(),
+        });
+        currentDate.setDate(currentDate.getDate() + 7);
+      }
+    } else if (viewType === 'monthly') {
+      // Monthly view: show each month
+      const currentDate = new Date(dateRange.min.getFullYear(), dateRange.min.getMonth(), 1);
+      while (currentDate <= dateRange.max) {
+        labels.push({
+          date: new Date(currentDate),
+          label: currentDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+          isFirstOfPeriod: currentDate.getMonth() === 0, // January
+        });
+        currentDate.setMonth(currentDate.getMonth() + 1);
+      }
+    } else {
+      // Yearly view: show each year
+      const currentYear = dateRange.min.getFullYear();
+      const endYear = dateRange.max.getFullYear();
+      for (let year = currentYear; year <= endYear; year++) {
+        labels.push({
+          date: new Date(year, 0, 1),
+          label: year.toString(),
+          isFirstOfPeriod: true,
+        });
+      }
+    }
+    
+    return labels;
+  }, [dateRange, viewType]);
+
+  // Group by periods for header display (months/years)
+  const periodGroups = useMemo(() => {
+    if (viewType === 'yearly') {
+      return timeLabels.map(label => ({
+        label: label.label,
+        startDate: label.date,
+        endDate: new Date(label.date.getFullYear() + 1, 0, 1),
+      }));
+    } else if (viewType === 'monthly') {
+      return timeLabels.map(label => ({
+        label: label.label,
+        startDate: label.date,
+        endDate: new Date(label.date.getFullYear(), label.date.getMonth() + 1, 1),
+      }));
+    } else {
+      // For daily/weekly, group by month
+      const monthMap = new Map<string, Date[]>();
+      const currentDate = new Date(dateRange.min);
+      while (currentDate <= dateRange.max) {
+        const monthKey = `${currentDate.getFullYear()}-${currentDate.getMonth()}`;
+        if (!monthMap.has(monthKey)) {
+          monthMap.set(monthKey, []);
+        }
+        monthMap.get(monthKey)!.push(new Date(currentDate));
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      return Array.from(monthMap.entries()).map(([key, days]) => {
+        const [year, month] = key.split('-').map(Number);
+        const monthName = new Date(year, month, 1).toLocaleDateString('en-US', { month: 'short' });
+        return {
+          label: `${monthName} ${year}`,
+          startDate: days[0],
+          endDate: new Date(year, month + 1, 1),
+        };
+      });
+    }
+  }, [dateRange, viewType, timeLabels]);
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    if (viewType === 'yearly') {
+      return date.getFullYear().toString();
+    } else if (viewType === 'monthly') {
+      return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    } else {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+  };
+  
+  const getPeriodIndex = (date: Date) => {
+    const diffTime = date.getTime() - dateRange.min.getTime();
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
   };
 
   return (
@@ -161,23 +277,62 @@ export default function GanttChartPage() {
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          {/* Date Header */}
+          {/* Period Header Row (Month/Year) */}
+          {periodGroups.length > 0 && (
+            <div className="border-b-2 border-gray-300 bg-gray-100">
+              <div className="relative h-10">
+                {periodGroups.map((period, idx) => {
+                  const startPos = getPositionForDate(period.startDate);
+                  const endPos = getPositionForDate(new Date(Math.min(period.endDate.getTime() - 1, dateRange.max.getTime())));
+                  const width = Math.max(0, endPos - startPos);
+                  
+                  return (
+                    <div
+                      key={idx}
+                      className="absolute top-0 bottom-0 border-r-2 border-gray-400 bg-gray-100 text-center flex items-center justify-center"
+                      style={{
+                        left: `${startPos}%`,
+                        width: `${width}%`,
+                      }}
+                    >
+                      <span className="font-semibold text-gray-800 text-sm">
+                        {period.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Time Label Row (Day/Week/Month/Year) */}
           <div className="border-b border-gray-200 bg-gray-50">
-            <div className="relative" style={{ minHeight: '60px' }}>
-              {dateLabels.map((date, idx) => {
-                const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+            <div className="relative" style={{ minHeight: viewType === 'yearly' ? '40px' : '50px' }}>
+              {timeLabels.map((label, idx) => {
+                const position = getPositionForDate(label.date);
+                const nextPosition = idx < timeLabels.length - 1 
+                  ? getPositionForDate(timeLabels[idx + 1].date)
+                  : 100;
+                const width = Math.max(2, nextPosition - position); // Minimum 2% width
+                
                 return (
                   <div
                     key={idx}
-                    className={`absolute top-0 bottom-0 border-r border-gray-300 text-xs text-center py-2 ${
-                      isWeekend ? 'bg-gray-100' : 'bg-white'
-                    }`}
+                    className={`absolute top-0 bottom-0 border-r border-gray-300 text-xs text-center py-1 ${
+                      label.isWeekend ? 'bg-gray-100' : 'bg-white'
+                    } ${label.isFirstOfPeriod ? 'border-l-2 border-gray-400' : ''}`}
                     style={{
-                      left: `${(idx / (dateLabels.length - 1)) * 100}%`,
-                      width: `${100 / dateLabels.length}%`,
+                      left: `${Math.max(0, position)}%`,
+                      width: `${width}%`,
+                      minWidth: viewType === 'daily' ? '20px' : viewType === 'yearly' ? '60px' : '40px',
                     }}
                   >
-                    <div className="font-medium text-gray-700">{formatDate(date)}</div>
+                    <div className="font-medium text-gray-700 truncate px-1">{label.label}</div>
+                    {viewType === 'daily' && (
+                      <div className="text-xs text-gray-500">
+                        {label.date.toLocaleDateString('en-US', { weekday: 'short' }).substring(0, 1)}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -185,49 +340,57 @@ export default function GanttChartPage() {
           </div>
 
           {/* Cards */}
-          <div className="relative" style={{ minHeight: `${cardsWithDueDates.length * 60}px` }}>
+          <div className="relative" style={{ minHeight: `${cardsWithDueDates.length * 70}px` }}>
             {cardsWithDueDates.map((card, idx) => {
               const dueDate = new Date(card.dueDate!);
               const position = getPositionForDate(dueDate);
-              const width = getWidthForCard(card);
+              const width = Math.max(3, (2 / daysInRange) * 100); // Wider bars for better visibility
               const priorityColor = getPriorityColor(card.priority);
 
               return (
                 <div
                   key={card.id}
-                  className="absolute border-t border-gray-200"
+                  className="absolute border-t border-gray-200 hover:bg-gray-50 transition-colors"
                   style={{
-                    top: `${idx * 60}px`,
-                    height: '56px',
+                    top: `${idx * 70}px`,
+                    height: '66px',
                     width: '100%',
                   }}
                 >
-                  <div className="h-full flex items-center px-4">
-                    <div className="flex-1 mr-4">
-                      <div className="font-medium text-sm text-gray-900 truncate">
+                  {/* Left side - Card info */}
+                  <div className="h-full flex items-center px-4 absolute left-0" style={{ width: '250px', backgroundColor: 'white', zIndex: 10 }}>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm text-gray-900 truncate mb-1">
                         {card.title}
                       </div>
-                      <div className="text-xs text-gray-500">
-                        {card.listName} • {card.assignedUserNames && card.assignedUserNames.length > 0 
+                      <div className="text-xs text-gray-500 truncate">
+                        {card.listName}
+                      </div>
+                      <div className="text-xs text-gray-400 truncate">
+                        {card.assignedUserNames && card.assignedUserNames.length > 0 
                           ? card.assignedUserNames.join(', ') 
                           : 'Unassigned'}
                       </div>
                     </div>
                   </div>
                   
-                  {/* Gantt Bar */}
-                  <div
-                    className="absolute top-2 rounded px-2 py-1 text-white text-xs font-medium shadow-sm"
-                    style={{
-                      left: `${Math.max(0, position - width / 2)}%`,
-                      width: `${width}%`,
-                      backgroundColor: priorityColor,
-                      minWidth: '80px',
-                    }}
-                    title={`${card.title} - Due: ${formatDate(dueDate)}`}
-                  >
-                    <div className="truncate">{card.title}</div>
-                    <div className="text-xs opacity-90">{formatDate(dueDate)}</div>
+                  {/* Gantt Bar Area */}
+                  <div className="absolute left-64 right-0 top-0 bottom-0">
+                    {/* Gantt Bar */}
+                    <div
+                      className="absolute top-3 rounded px-3 py-2 text-white text-xs font-medium shadow-md hover:shadow-lg transition-shadow cursor-pointer z-10"
+                      style={{
+                        left: `${Math.max(0, position)}%`,
+                        width: `${Math.min(width, 100 - position)}%`,
+                        backgroundColor: priorityColor,
+                        minWidth: '100px',
+                      }}
+                      title={`${card.title} - Due: ${formatDate(dueDate)} - ${card.priority || 'MEDIUM'} Priority`}
+                      onClick={() => navigate(`/dashboard/${boardId}`)}
+                    >
+                      <div className="font-semibold truncate mb-1">{card.title}</div>
+                      <div className="text-xs opacity-95">{formatDate(dueDate)}</div>
+                    </div>
                   </div>
                 </div>
               );

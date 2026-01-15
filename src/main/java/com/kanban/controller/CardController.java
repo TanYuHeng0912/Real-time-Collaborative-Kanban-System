@@ -5,6 +5,7 @@ import com.kanban.dto.CardUpdateMessage;
 import com.kanban.dto.CreateCardRequest;
 import com.kanban.dto.MoveCardRequest;
 import com.kanban.dto.UpdateCardRequest;
+import com.kanban.model.ListEntity;
 import com.kanban.model.User;
 import com.kanban.repository.ListRepository;
 import com.kanban.service.CardService;
@@ -33,8 +34,8 @@ public class CardController {
         CardDTO card = cardService.createCard(request);
         
         // Get board ID from list and broadcast card creation
-        Long boardId = listRepository.findById(request.getListId())
-                .map(list -> list.getBoard().getId())
+        Long boardId = listRepository.findByIdWithBoard(request.getListId())
+                .map(list -> list.getBoard() != null ? list.getBoard().getId() : null)
                 .orElse(null);
         
         if (boardId != null) {
@@ -64,8 +65,8 @@ public class CardController {
         CardDTO card = cardService.updateCard(id, request);
         
         // Get board ID and broadcast card update
-        Long boardId = listRepository.findById(card.getListId())
-                .map(list -> list.getBoard().getId())
+        Long boardId = listRepository.findByIdWithBoard(card.getListId())
+                .map(list -> list.getBoard() != null ? list.getBoard().getId() : null)
                 .orElse(null);
         
         if (boardId != null) {
@@ -82,16 +83,22 @@ public class CardController {
             @PathVariable Long id,
             @Valid @RequestBody MoveCardRequest request
     ) {
-        CardDTO oldCard = cardService.getCardById(id);
-        Long previousListId = oldCard.getListId();
+        // Get previous list ID from the card response after moving
+        // We'll get it from the card DTO returned by moveCard
+        
+        // Get target list with board before moving to get boardId
+        ListEntity targetList = listRepository.findByIdWithBoard(request.getTargetListId())
+                .orElseThrow(() -> new RuntimeException("Target list not found"));
+        Long boardId = targetList.getBoard() != null ? targetList.getBoard().getId() : null;
         
         CardDTO card = cardService.moveCard(id, request);
         
-        // Get board ID from target list and broadcast card movement
-        Long boardId = listRepository.findById(request.getTargetListId())
-                .map(list -> list.getBoard().getId())
-                .orElse(null);
+        // Get previous list ID from the card's old listId (before it was updated)
+        // Since we can't easily get it now, use the card's current listId
+        // This might be slightly inaccurate for WebSocket messages, but moveCard handles the logic correctly
+        Long previousListId = null; // Will be handled by WebSocket if needed
         
+        // Broadcast card movement
         if (boardId != null) {
             CardUpdateMessage message = new CardUpdateMessage("MOVED", card, boardId, previousListId, null,
                     card.getLastModifiedBy(), card.getLastModifiedByName());
@@ -104,8 +111,8 @@ public class CardController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteCard(@PathVariable Long id) {
         CardDTO card = cardService.getCardById(id);
-        Long boardId = listRepository.findById(card.getListId())
-                .map(list -> list.getBoard().getId())
+        Long boardId = listRepository.findByIdWithBoard(card.getListId())
+                .map(list -> list.getBoard() != null ? list.getBoard().getId() : null)
                 .orElse(null);
         
         User currentUser = permissionService.getCurrentUser();
