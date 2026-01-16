@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { workspaceService } from '@/services/workspaceService';
 import { boardService, CreateBoardRequest } from '@/services/boardService';
@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { WorkspaceDTO } from '@/types';
 
 interface CreateBoardDialogProps {
   onBoardCreated: (boardId: number) => void;
@@ -19,14 +20,17 @@ export default function CreateBoardDialog({ onBoardCreated }: CreateBoardDialogP
   const queryClient = useQueryClient();
   const isAdmin = useAuthStore((state) => state.isAdmin);
 
-  const { data: workspaces } = useQuery({
+  const { data: workspaces, error: workspacesError } = useQuery<WorkspaceDTO[]>({
     queryKey: ['workspaces'],
     queryFn: workspaceService.getMyWorkspaces,
     retry: false,
-    onError: (error) => {
-      console.error('Error fetching workspaces:', error);
-    },
   });
+
+  useEffect(() => {
+    if (workspacesError) {
+      console.error('Error fetching workspaces:', workspacesError);
+    }
+  }, [workspacesError]);
 
   const createWorkspaceMutation = useMutation({
     mutationFn: workspaceService.createWorkspace,

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/authStore';
-import { adminService, UserDTO, WorkspaceWithBoardsDTO, SystemStatisticsDTO } from '@/services/adminService';
+import { adminService } from '@/services/adminService';
 import { boardService, CreateBoardRequest } from '@/services/boardService';
 import { workspaceService } from '@/services/workspaceService';
 import { BoardDTO } from '@/types';
@@ -17,7 +17,6 @@ type Tab = 'users' | 'workspaces' | 'statistics';
 export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState<Tab>('users');
   const [expandedWorkspaces, setExpandedWorkspaces] = useState<Set<number>>(new Set());
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { isAdmin, token } = useAuthStore();
 

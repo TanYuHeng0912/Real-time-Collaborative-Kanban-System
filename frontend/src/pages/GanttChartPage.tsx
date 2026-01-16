@@ -83,14 +83,6 @@ export default function GanttChartPage() {
     return (diffDays / daysInRange) * 100;
   };
 
-  const getWidthForCard = (card: CardDTO) => {
-    // Adjust width based on view type
-    let baseWidth = 5;
-    if (viewType === 'yearly') baseWidth = 2;
-    else if (viewType === 'monthly') baseWidth = 3;
-    else if (viewType === 'weekly') baseWidth = 4;
-    return Math.max(baseWidth, (1 / daysInRange) * 100);
-  };
 
   // Redirect if no boardId
   useEffect(() => {
@@ -252,10 +244,6 @@ export default function GanttChartPage() {
     }
   };
   
-  const getPeriodIndex = (date: Date) => {
-    const diffTime = date.getTime() - dateRange.min.getTime();
-    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  };
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">

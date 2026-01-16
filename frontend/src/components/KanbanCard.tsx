@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { CardDTO, ListDTO } from '@/types';
+import { CardDTO } from '@/types';
 import { boardService } from '@/services/boardService';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -26,9 +26,8 @@ const getInitials = (name?: string): string => {
   return name.substring(0, 2).toUpperCase();
 };
 
-export default function KanbanCard({ card, index, listId, boardId }: KanbanCardProps) {
+export default function KanbanCard({ card, index, listId: _listId, boardId }: KanbanCardProps) {
   const queryClient = useQueryClient();
-  const [isDeleting, setIsDeleting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editTitle, setEditTitle] = useState(card.title);
@@ -57,12 +56,6 @@ export default function KanbanCard({ card, index, listId, boardId }: KanbanCardP
       toast.error(errorMessage);
     },
   });
-
-  const handleEdit = () => {
-    setEditTitle(card.title);
-    setEditDescription(card.description || '');
-    setIsEditing(true);
-  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
