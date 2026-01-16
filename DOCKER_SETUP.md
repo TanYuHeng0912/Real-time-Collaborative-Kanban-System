@@ -76,8 +76,10 @@ docker exec -i kanban-postgres psql -U postgres -d kanban_db < database/schema.s
 ## Step 4: Access the Application
 
 - **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8080/api
-- **Health Check**: http://localhost:8080/api/health
+- **Backend API**: http://localhost:8081/api (Note: Port 8081 to avoid conflict with local backend on 8080)
+- **Health Check**: http://localhost:8081/api/health
+
+**Note:** If you have a local backend running on port 8080, Docker uses port 8081 instead. You can change this in `docker-compose.yml` if needed.
 
 ## Step 5: Create Admin User (Optional)
 
