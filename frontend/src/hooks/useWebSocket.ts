@@ -26,13 +26,25 @@ export const useWebSocket = ({ boardId, onCardUpdate }: UseWebSocketProps) => {
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
       onConnect: () => {
+        console.log(`[WebSocket] Connected to board ${boardId}`);
         client.subscribe(`/topic/board/${boardId}`, (message) => {
-          const update: CardUpdateMessage = JSON.parse(message.body);
-          onCardUpdate(update);
+          try {
+            const update: CardUpdateMessage = JSON.parse(message.body);
+            console.log('[WebSocket] Received update:', update);
+            onCardUpdate(update);
+          } catch (error) {
+            console.error('[WebSocket] Error parsing message:', error, message.body);
+          }
         });
       },
       onStompError: (frame) => {
-        console.error('WebSocket error:', frame);
+        console.error('[WebSocket] STOMP error:', frame);
+      },
+      onWebSocketError: (event) => {
+        console.error('[WebSocket] Connection error:', event);
+      },
+      onDisconnect: () => {
+        console.log('[WebSocket] Disconnected');
       },
     });
 
