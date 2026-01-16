@@ -111,8 +111,6 @@ A full-stack Kanban board application built with Spring Boot and React, featurin
 
 6. **Create admin user** (first time only)
    
-   **Option A: Using SQL script (Recommended)**
-   
    **Windows PowerShell:**
    ```powershell
    Get-Content database/create_admin_render.sql | docker exec -i kanban-postgres psql -U postgres -d kanban_db
@@ -127,10 +125,6 @@ A full-stack Kanban board application built with Spring Boot and React, featurin
    - **Email**: `admin@kanban.com`
    - **Password**: `admin123`
    - **Role**: `ADMIN`
-   
-   **Option B: Register via frontend**
-   - Go to http://localhost:3000
-   - Click "Sign up" and create a new account
 
 7. **Access the application**
    - **Frontend**: http://localhost:3000
