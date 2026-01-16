@@ -45,50 +45,140 @@ A full-stack Kanban board application built with Spring Boot and React, featurin
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
-   cd kanban-system
+   git clone https://github.com/TanYuHeng0912/Real-time-Collaborative-Kanban-System.git
+   cd Real-time-Collaborative-Kanban-System
    ```
 
 2. **Create environment file**
-   ```bash
-   # Copy the example environment file
-   cp .env.example .env
    
-   # Edit .env and set your passwords and JWT secret
-   # Generate JWT secret: openssl rand -base64 64
-   ```
-
-3. **Start all services with Docker Compose**
-   ```bash
-   docker-compose up -d
-   ```
-
-4. **Initialize the database** (first time only)
-   ```bash
-   # Connect to the PostgreSQL container
-   docker exec -it kanban-postgres psql -U postgres -d kanban_db
+   Create a `.env` file in the project root directory with the following content:
+   ```env
+   # PostgreSQL Database
+   POSTGRES_DB=kanban_db
+   POSTGRES_USER=postgres
+   POSTGRES_PASSWORD=your_secure_password_here
    
-   # Run the schema script
-   \i /path/to/database/schema.sql
-   # Or copy the schema.sql content and paste it into the psql prompt
+   # JWT Configuration
+   JWT_SECRET=your_jwt_secret_key_min_64_characters_long_for_security
+   JWT_EXPIRATION=86400000
+   
+   # Redis Configuration (optional, can be empty)
+   REDIS_PASSWORD=
+   
+   # Spring Configuration
+   SPRING_JPA_DDL_AUTO=validate
+   SPRING_JPA_SHOW_SQL=false
+   SPRING_PROFILES_ACTIVE=prod
+   
+   # CORS Configuration
+   CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+   WEBSOCKET_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+   ```
+   
+   **Important**: 
+   - Change `POSTGRES_PASSWORD` and `JWT_SECRET` to secure random values
+   - Generate JWT secret: `openssl rand -base64 64` (or use any 64+ character random string)
+   - Make sure `.env` is in `.gitignore` (should be already configured)
+
+3. **Build and start all services with Docker Compose**
+   ```bash
+   docker-compose up -d --build
+   ```
+   
+   This command will:
+   - Build the backend and frontend Docker images
+   - Start PostgreSQL, Redis, backend, and frontend containers
+   - Wait approximately 30-60 seconds for all services to start
+
+4. **Check container status**
+   ```bash
+   docker-compose ps
+   ```
+   
+   All services should show "Up" status. Wait until backend shows "healthy" status.
+
+5. **Initialize the database schema** (first time only)
+   
+   **Windows PowerShell:**
+   ```powershell
+   Get-Content database/schema.sql | docker exec -i kanban-postgres psql -U postgres -d kanban_db
+   ```
+   
+   **Linux/Mac:**
+   ```bash
+   docker exec -i kanban-postgres psql -U postgres -d kanban_db < database/schema.sql
    ```
 
-5. **Access the application**
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:8080/api
-   - Health Check: http://localhost:8080/api/health
-
-6. **View logs**
+6. **Create admin user** (first time only)
+   
+   **Option A: Using SQL script (Recommended)**
+   
+   **Windows PowerShell:**
+   ```powershell
+   Get-Content database/create_admin_render.sql | docker exec -i kanban-postgres psql -U postgres -d kanban_db
+   ```
+   
+   **Linux/Mac:**
    ```bash
+   docker exec -i kanban-postgres psql -U postgres -d kanban_db < database/create_admin_render.sql
+   ```
+   
+   This creates an admin user with:
+   - **Email**: `admin@kanban.com`
+   - **Password**: `admin123`
+   - **Role**: `ADMIN`
+   
+   **Option B: Register via frontend**
+   - Go to http://localhost:3000
+   - Click "Sign up" and create a new account
+
+7. **Access the application**
+   - **Frontend**: http://localhost:3000
+   - **Backend API**: http://localhost:8081/api
+   - **Health Check**: http://localhost:8081/api/health
+   
+   **Note**: Backend is exposed on port 8081 (instead of 8080) to avoid conflicts with local backend instances. The frontend automatically connects to the backend via Docker's internal network.
+
+8. **Login with admin credentials**
+   - **Email**: `admin@kanban.com`
+   - **Password**: `admin123`
+   
+   **Security Note**: Change the default password after first login!
+
+9. **View logs** (if needed)
+   ```bash
+   # View all logs
    docker-compose logs -f
+   
+   # View backend logs only
+   docker-compose logs backend -f
+   
+   # View frontend logs only
+   docker-compose logs frontend -f
    ```
 
-7. **Stop services**
-   ```bash
-   docker-compose down
-   ```
+10. **Stop services**
+    ```bash
+    docker-compose down
+    ```
+    
+    To remove volumes (including database data):
+    ```bash
+    docker-compose down -v
+    ```
 
-**Note:** The Docker setup uses environment variables for all sensitive configuration. Database port is **not exposed** to the host machine for security.
+**Troubleshooting:**
+
+- **Port conflicts**: If port 8081 or 3000 is in use, modify `docker-compose.yml` to use different ports
+- **Container not starting**: Check logs with `docker-compose logs backend` or `docker-compose logs frontend`
+- **Database connection errors**: Ensure PostgreSQL container is healthy: `docker-compose ps`
+- **Rebuild after code changes**: Run `docker-compose up -d --build`
+
+**Security Notes:**
+- The Docker setup uses environment variables for all sensitive configuration
+- Database port is **not exposed** to the host machine for security
+- Change default admin password (`admin123`) after first login
+- Use strong, random values for `POSTGRES_PASSWORD` and `JWT_SECRET` in production
 
 ---
 
