@@ -16,9 +16,10 @@ export const useWebSocket = ({ boardId, onCardUpdate }: UseWebSocketProps) => {
 
     // Determine WebSocket URL - use environment variable or fallback to Render URL in production
     // VITE_WS_URL should be the full WebSocket URL including /ws endpoint
-    // Example: wss://kanban-backend-d0s2.onrender.com/api/ws
+    // IMPORTANT: SockJS requires https:// (not wss://) - it handles the protocol internally
+    // Example: https://kanban-backend-d0s2.onrender.com/api/ws
     const wsUrl = import.meta.env.VITE_WS_URL || 
-      (import.meta.env.PROD ? 'wss://kanban-backend-d0s2.onrender.com/api/ws' : '/api/ws');
+      (import.meta.env.PROD ? 'https://kanban-backend-d0s2.onrender.com/api/ws' : '/api/ws');
 
     const client = new Client({
       webSocketFactory: () => new SockJS(wsUrl) as any,
