@@ -14,8 +14,13 @@ export const useWebSocket = ({ boardId, onCardUpdate }: UseWebSocketProps) => {
   useEffect(() => {
     if (!boardId) return;
 
+    // Determine WebSocket URL - use environment variable or fallback to Render URL in production
+    const wsBaseUrl = import.meta.env.VITE_WS_URL || 
+      (import.meta.env.PROD ? 'https://kanban-backend-d0s2.onrender.com/api' : '/api');
+    const wsUrl = `${wsBaseUrl}/ws`;
+
     const client = new Client({
-      webSocketFactory: () => new SockJS('/api/ws') as any,
+      webSocketFactory: () => new SockJS(wsUrl) as any,
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { CardDTO, ListDTO, BoardDTO } from '@/types';
+import { CardDTO, BoardDTO } from '@/types';
 
 interface KanbanState {
   currentBoard: BoardDTO | null;
@@ -57,7 +57,8 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
       const targetListIndex = updatedLists.findIndex(l => l.id === targetListId);
       if (targetListIndex !== -1) {
         const targetList = updatedLists[targetListIndex];
-        const newCard = { ...cardToMove, listId: targetListId, position: newPosition };
+        const card: CardDTO = cardToMove; // Type narrowing
+        const newCard: CardDTO = { ...card, listId: targetListId, position: newPosition };
         const updatedCards = [...targetList.cards, newCard].sort((a, b) => a.position - b.position);
         updatedLists[targetListIndex] = {
           ...targetList,

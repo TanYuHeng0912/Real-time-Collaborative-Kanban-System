@@ -1,8 +1,10 @@
 import axios from 'axios';
 
-// Use environment variable for API base URL, fallback to relative path for production
+// Use environment variable for API base URL, fallback to Render URL or relative path
 // For Render deployment, set VITE_API_BASE_URL in environment variables
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+// Example: https://kanban-backend-d0s2.onrender.com/api
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
+  (import.meta.env.PROD ? 'https://kanban-backend-d0s2.onrender.com/api' : '/api');
 
 export const api = axios.create({
   baseURL: API_BASE_URL,

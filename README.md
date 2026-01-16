@@ -188,32 +188,6 @@ A full-stack Kanban board application built with Spring Boot and React, featurin
 - **React Query** for server-state caching and synchronization
 - Automatic error handling and retry logic
 
----
-
-## Deployment
-
-### Render.com Deployment
-
-This application is configured for deployment on Render.com with security best practices:
-
-- ✅ Secure Docker images (non-root user, Alpine-based)
-- ✅ Environment variable configuration (no hardcoded secrets)
-- ✅ Database security (internal networking only)
-- ✅ Health check endpoints
-
-See [RENDER_DEPLOYMENT.md](./RENDER_DEPLOYMENT.md) for detailed deployment instructions.
-
-### Production Considerations
-
-1. **Environment Variables**: All sensitive configuration uses environment variables
-2. **JWT Secret**: Generate a secure secret: `openssl rand -base64 64`
-3. **Database**: Use managed PostgreSQL service (Render, AWS RDS, etc.)
-4. **CORS**: Configure `CORS_ALLOWED_ORIGINS` environment variable
-5. **WebSocket**: Configure `WEBSOCKET_ALLOWED_ORIGINS` environment variable
-6. **SSL/TLS**: Use HTTPS in production (automatically handled by Render)
-
----
-
 ## Security Features
 
 - **Non-root Docker containers**: Application runs as `kanban` user
@@ -224,67 +198,9 @@ See [RENDER_DEPLOYMENT.md](./RENDER_DEPLOYMENT.md) for detailed deployment instr
 - **CORS configuration**: Configurable allowed origins
 - **JWT authentication**: Secure token-based authentication
 
----
-
-## Project Structure
-
-```
-kanban-system/
-├── src/                    # Spring Boot backend source code
-│   └── main/
-│       ├── java/com/kanban/
-│       │   ├── config/     # Configuration (WebSocket, Security)
-│       │   ├── controller/ # REST controllers
-│       │   ├── dto/        # Data Transfer Objects
-│       │   ├── model/      # Entity models
-│       │   ├── repository/ # Data repositories
-│       │   ├── security/   # Security configuration
-│       │   └── service/    # Business logic
-│       └── resources/
-│           └── application.yml
-├── frontend/               # React frontend
-│   ├── src/
-│   │   ├── components/     # React components
-│   │   ├── pages/          # Page components
-│   │   ├── services/       # API services
-│   │   └── store/          # State management
-│   └── package.json
-├── database/               # Database schema and migrations
-├── Dockerfile              # Backend Docker image
-├── docker-compose.yml      # Local development setup
-└── RENDER_DEPLOYMENT.md    # Deployment guide
 
 ```
 
----
 
-## Troubleshooting
 
-### Docker Issues
-
-- **Port already in use**: Change ports in `docker-compose.yml`
-- **Database connection errors**: Check `POSTGRES_PASSWORD` in `.env`
-- **Build failures**: Ensure Docker has enough memory (4GB+ recommended)
-
-### Manual Setup Issues
-
-- **Database connection**: Verify PostgreSQL is running and credentials are correct
-- **Port conflicts**: Backend uses 8080, frontend uses 5173
-- **CORS errors**: Check `CORS_ALLOWED_ORIGINS` environment variable
-
----
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test with Docker Compose
-5. Submit a pull request
-
----
-
-## License
-
-[Add your license here]
 
