@@ -25,14 +25,18 @@ RUN npm ci --only=production=false
 # Copy source code
 COPY . .
 
-# Accept build argument for API base URL (defaults to /api for Docker)
+# Accept build arguments for API base URL and WebSocket URL (defaults to /api for Docker)
 # Vite requires env vars to be prefixed with VITE_ and available at build time
 # Note: ARG must be declared before use, and ENV makes it available to RUN commands
 ARG VITE_API_BASE_URL=/api
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
-# Verify the env var is set (for debugging)
+ARG VITE_WS_URL=/api/ws
+ENV VITE_WS_URL=$VITE_WS_URL
+
+# Verify the env vars are set (for debugging)
 RUN echo "Building with VITE_API_BASE_URL=$VITE_API_BASE_URL"
+RUN echo "Building with VITE_WS_URL=$VITE_WS_URL"
 
 # Build the application (the env var will be available to Vite)
 RUN npm run build
@@ -60,9 +64,9 @@ RUN chown -R nginx:nginx /usr/share/nginx/html && \
 # Expose port 80
 EXPOSE 80
 
-# Health check
+# Health check - use 127.0.0.1 to avoid IPv6 resolution issues
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:80 || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:80 || exit 1
 
 # Nginx runs as non-root by default in alpine, so we don't need USER directive
 CMD ["nginx", "-g", "daemon off;"]
