@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import KanbanCard from '../KanbanCard';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { CardDTO } from '@/types';
 
 // Mock dependencies
 vi.mock('@hello-pangea/dnd', () => ({
@@ -45,12 +46,13 @@ describe('KanbanCard', () => {
     });
   });
 
-  const mockCard = {
+  const mockCard: CardDTO = {
     id: 1,
     title: 'Test Card',
     description: 'Test Description',
     position: 0,
     listId: 1,
+    createdBy: 1,
     priority: 'MEDIUM',
     assignedUserIds: [],
     assignedUserNames: [],
@@ -94,7 +96,7 @@ describe('KanbanCard', () => {
   });
 
   it('displays priority badge', () => {
-    const highPriorityCard = { ...mockCard, priority: 'HIGH' };
+    const highPriorityCard: CardDTO = { ...mockCard, priority: 'HIGH' };
     render(
       <KanbanCard
         card={highPriorityCard}
@@ -109,7 +111,7 @@ describe('KanbanCard', () => {
   });
 
   it('handles card without description', () => {
-    const cardWithoutDescription = { ...mockCard, description: null };
+    const cardWithoutDescription: CardDTO = { ...mockCard, description: undefined };
     render(
       <KanbanCard
         card={cardWithoutDescription}
