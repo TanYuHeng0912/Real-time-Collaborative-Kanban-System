@@ -1,0 +1,38 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+  h2:
+    console:
+      enabled: true
+  redis:
+    host: localhost
+    port: 6379
+    timeout: 60000
+
+server:
+  port: 0  # Use random port for tests
+  servlet:
+    context-path: /api
+
+jwt:
+  secret: test-secret-key-for-testing-purposes-only-minimum-256-bits-long
+  expiration: 86400000
+
+cors:
+  allowed:
+    origins: http://localhost:3000,http://localhost:5173
+
+websocket:
+  allowed:
+    origins: http://localhost:3000,http://localhost:5173
+

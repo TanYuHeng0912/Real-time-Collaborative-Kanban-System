@@ -1,15 +1,15 @@
-# REal Time Collaborative Kanban System
+# Real-Time Collaborative Kanban System
 
 A full-stack Kanban board application built with Spring Boot and React, featuring real-time collaboration through WebSocket connections.
 
-## Tech Stack
+## 📚 Tech Stack
 
 ### Backend
 - **Spring Boot 3.2+** with Java 17
 - **Spring Data JPA** for database operations
 - **Spring Security** with JWT authentication
 - **PostgreSQL** for data persistence
-- **Redis** for caching/session management (configured but optional)
+- **Redis** for caching/session management (optional)
 - **WebSocket (STOMP)** for real-time updates
 - **Project Lombok** for reducing boilerplate code
 
@@ -25,23 +25,28 @@ A full-stack Kanban board application built with Spring Boot and React, featurin
 - **Axios** with interceptors for API calls
 - **WebSocket (STOMP)** client for real-time updates
 
+## 🚀 Installation Guide
 
-## Prerequisites
+Choose the installation method that best fits your needs:
 
-### Option 1: Docker (Recommended - Easier Setup)
-- **Docker Desktop** (Windows/Mac) or **Docker Engine** (Linux)
-- **Docker Compose** (included with Docker Desktop)
+| Method | Difficulty | Speed | Best For |
+|--------|-----------|-------|----------|
+| **Method 1: Docker Compose** | ⭐ Easy | ⚡ Fast | Beginners, Production |
+| **Method 2: Docker Run Script** | ⭐ Easy | ⚡ Fast | Quick setup, No docker-compose |
+| **Method 3: Manual Docker Run** | ⭐⭐ Medium | ⚡⚡ Medium | Full control, Custom config |
+| **Method 4: Manual Build** | ⭐⭐⭐ Hard | ⚡⚡⚡ Slow | Developers, Debugging |
 
-### Option 2: Manual Setup
-- **Java 17+**
-- **Maven 3.6+**
-- **PostgreSQL 12+**
-- **Node.js 18+** and **npm**
-- **Redis** (optional, for caching)
+---
 
-## Setup Instructions
+## Method 1: Docker Compose (Recommended ⭐)
 
-### Quick Start with Docker (Recommended)
+**Best for**: Beginners, production deployments, managing complex configurations
+
+### Prerequisites
+- Docker Desktop (Windows/Mac) or Docker Engine (Linux)
+- Docker Compose (included with Docker Desktop)
+
+### Steps
 
 1. **Clone the repository**
    ```bash
@@ -49,20 +54,18 @@ A full-stack Kanban board application built with Spring Boot and React, featurin
    cd Real-time-Collaborative-Kanban-System
    ```
 
-2. **Create environment file**
-   
-   Create a `.env` file in the project root directory with the following content:
+2. **Create environment file** (`.env`)
    ```env
    # PostgreSQL Database
    POSTGRES_DB=kanban_db
    POSTGRES_USER=postgres
    POSTGRES_PASSWORD=your_secure_password_here
    
-   # JWT Configuration
+   # JWT Configuration (generate with: openssl rand -base64 64)
    JWT_SECRET=your_jwt_secret_key_min_64_characters_long_for_security
    JWT_EXPIRATION=86400000
    
-   # Redis Configuration (optional, can be empty)
+   # Redis Configuration (optional)
    REDIS_PASSWORD=
    
    # Spring Configuration
@@ -73,180 +76,276 @@ A full-stack Kanban board application built with Spring Boot and React, featurin
    # CORS Configuration
    CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
    WEBSOCKET_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
-   ```
    
-   **Important**: 
-   - Change `POSTGRES_PASSWORD` and `JWT_SECRET` to secure random values
-   - Generate JWT secret: `openssl rand -base64 64` (or use any 64+ character random string)
-   - Make sure `.env` is in `.gitignore` (should be already configured)
+   # Docker Hub Configuration (optional - defaults to tan0912)
+   DOCKER_USERNAME=tan0912
+   ```
 
-3. **Build and start all services with Docker Compose**
+3. **Create Docker Compose file**
    ```bash
-   docker-compose up -d --build
+   cp docker-compose.dockerhub.yml.example docker-compose.dockerhub.yml
    ```
-   
-   This command will:
-   - Build the backend and frontend Docker images
-   - Start PostgreSQL, Redis, backend, and frontend containers
-   - Wait approximately 30-60 seconds for all services to start
 
-4. **Check container status**
+4. **Start all services**
    ```bash
-   docker-compose ps
+   docker-compose -f docker-compose.dockerhub.yml up -d
    ```
-   
-   All services should show "Up" status. Wait until backend shows "healthy" status.
 
-5. **Initialize the database schema** (first time only)
+5. **Wait for services to start** (30-60 seconds), then check status:
+   ```bash
+   docker-compose -f docker-compose.dockerhub.yml ps
+   ```
+
+6. **Initialize database** (first time only)
    
    **Windows PowerShell:**
    ```powershell
    Get-Content database/schema.sql | docker exec -i kanban-postgres psql -U postgres -d kanban_db
-   ```
-   
-   **Linux/Mac:**
-   ```bash
-   docker exec -i kanban-postgres psql -U postgres -d kanban_db < database/schema.sql
-   ```
-
-6. **Create admin user** (first time only)
-   
-   **Windows PowerShell:**
-   ```powershell
    Get-Content database/create_admin_render.sql | docker exec -i kanban-postgres psql -U postgres -d kanban_db
    ```
    
    **Linux/Mac:**
    ```bash
+   docker exec -i kanban-postgres psql -U postgres -d kanban_db < database/schema.sql
    docker exec -i kanban-postgres psql -U postgres -d kanban_db < database/create_admin_render.sql
    ```
-   
-   This creates an admin user with:
-   - **Email**: `admin@kanban.com`
-   - **Password**: `admin123`
-   - **Role**: `ADMIN`
 
 7. **Access the application**
-   - **Frontend**: http://localhost:3000
-   - **Backend API**: http://localhost:8081/api
-   - **Health Check**: http://localhost:8081/api/health
-   
-   **Note**: Backend is exposed on port 8081 (instead of 8080) to avoid conflicts with local backend instances. The frontend automatically connects to the backend via Docker's internal network.
-
-8. **Login with admin credentials**
-   - **Email**: `admin@kanban.com`
-   - **Password**: `admin123`
-   
-   **Security Note**: Change the default password after first login!
-
-9. **View logs** (if needed)
-   ```bash
-   # View all logs
-   docker-compose logs -f
-   
-   # View backend logs only
-   docker-compose logs backend -f
-   
-   # View frontend logs only
-   docker-compose logs frontend -f
-   ```
-
-10. **Stop services**
-    ```bash
-    docker-compose down
-    ```
-    
-    To remove volumes (including database data):
-    ```bash
-    docker-compose down -v
-    ```
-
-**Troubleshooting:**
-
-- **Port conflicts**: If port 8081 or 3000 is in use, modify `docker-compose.yml` to use different ports
-- **Container not starting**: Check logs with `docker-compose logs backend` or `docker-compose logs frontend`
-- **Database connection errors**: Ensure PostgreSQL container is healthy: `docker-compose ps`
-- **Rebuild after code changes**: Run `docker-compose up -d --build`
-
-**Security Notes:**
-- The Docker setup uses environment variables for all sensitive configuration
-- Database port is **not exposed** to the host machine for security
-- Change default admin password (`admin123`) after first login
-- Use strong, random values for `POSTGRES_PASSWORD` and `JWT_SECRET` in production
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:8081/api
+   - Admin Login: `admin@kanban.com` / `admin123`
 
 ---
 
-### Manual Setup (Without Docker)
+## Method 2: Docker Run Script (No docker-compose needed!)
 
-#### 1. Database Setup
+**Best for**: Quick setup, avoiding docker-compose files, using Docker Hub URLs directly
 
-1. Start PostgreSQL server
-2. Create database:
+### Prerequisites
+- Docker Desktop (Windows/Mac) or Docker Engine (Linux)
+- Git (to clone repository for database scripts)
+
+### Steps
+
+1. **Clone the repository** (needed for database initialization scripts)
    ```bash
-   createdb kanban_db
+   git clone https://github.com/TanYuHeng0912/Real-time-Collaborative-Kanban-System.git
+   cd Real-time-Collaborative-Kanban-System
    ```
-3. Run the schema script:
+
+2. **Set environment variables** (optional - defaults to `tan0912`)
+   
+   **Windows PowerShell:**
+   ```powershell
+   $env:DOCKER_HUB_USERNAME="tan0912"
+   $env:POSTGRES_PASSWORD="your_secure_password"
+   $env:JWT_SECRET="your_jwt_secret_key"
+   ```
+   
+   **Linux/Mac:**
    ```bash
+   export DOCKER_HUB_USERNAME=tan0912
+   export POSTGRES_PASSWORD=your_secure_password
+   export JWT_SECRET=your_jwt_secret_key
+   ```
+
+3. **Run the setup script**
+   
+   **Windows PowerShell:**
+   ```powershell
+   .\scripts\run-with-dockerhub-url.ps1
+   ```
+   
+   **Linux/Mac:**
+   ```bash
+   chmod +x scripts/run-with-dockerhub-url.sh
+   ./scripts/run-with-dockerhub-url.sh
+   ```
+
+4. **Initialize database** (same as Method 1, step 6)
+
+5. **Access the application** (same as Method 1, step 7)
+
+**What this does:**
+- Automatically pulls images from Docker Hub: `tan0912/kanban-backend:latest` and `tan0912/kanban-frontend:latest`
+- Creates Docker network
+- Starts all containers (PostgreSQL, Redis, Backend, Frontend)
+- No docker-compose file needed!
+
+---
+
+## Method 3: Manual Docker Run Commands
+
+**Best for**: Maximum control, custom configurations, understanding how containers work
+
+### Prerequisites
+- Docker Desktop or Docker Engine
+
+### Steps
+
+```bash
+# 1. Create network
+docker network create kanban-network
+
+# 2. Start PostgreSQL
+docker run -d --name kanban-postgres --network kanban-network \
+  -e POSTGRES_DB=kanban_db \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=your_password \
+  -v kanban_postgres_data:/var/lib/postgresql/data \
+  --restart unless-stopped \
+  postgres:16-alpine
+
+# 3. Start Redis
+docker run -d --name kanban-redis --network kanban-network \
+  --restart unless-stopped \
+  redis:7-alpine
+
+# 4. Start Backend (from Docker Hub)
+docker run -d --name kanban-backend --network kanban-network \
+  -e SPRING_DATASOURCE_URL=jdbc:postgresql://kanban-postgres:5432/kanban_db \
+  -e SPRING_DATASOURCE_USERNAME=postgres \
+  -e SPRING_DATASOURCE_PASSWORD=your_password \
+  -e SPRING_REDIS_HOST=kanban-redis \
+  -e SPRING_REDIS_PORT=6379 \
+  -e JWT_SECRET=your_jwt_secret \
+  -e JWT_EXPIRATION=86400000 \
+  -e SERVER_PORT=8080 \
+  -e SERVER_SERVLET_CONTEXT_PATH=/api \
+  -e SPRING_PROFILES_ACTIVE=prod \
+  -e SPRING_JPA_DDL_AUTO=validate \
+  -p 8081:8080 \
+  --restart unless-stopped \
+  tan0912/kanban-backend:latest
+
+# 5. Start Frontend (from Docker Hub)
+docker run -d --name kanban-frontend --network kanban-network \
+  -p 3000:80 \
+  --restart unless-stopped \
+  tan0912/kanban-frontend:latest
+```
+
+**Then initialize database** (same as Method 1, step 6)
+
+---
+
+## Method 4: Manual Build & Run (For Developers)
+
+**Best for**: Developers who want to modify code, debug, or understand the application structure
+
+### Prerequisites
+- **Java 17+**
+- **Maven 3.6+**
+- **PostgreSQL 12+**
+- **Node.js 18+** and **npm**
+- **Redis** (optional, for caching)
+
+### Backend Setup
+
+1. **Database Setup**
+   ```bash
+   # Start PostgreSQL server
+   createdb kanban_db
    psql -U postgres -d kanban_db -f database/schema.sql
    ```
-   Or manually execute the SQL in `database/schema.sql` using your PostgreSQL client
 
-#### 2. Backend Setup
-
-1. **Configure environment variables** (recommended) or update `src/main/resources/application.yml`:
+2. **Configure environment variables**
    ```bash
-   # Create .env file or set environment variables
    export SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/kanban_db
    export SPRING_DATASOURCE_USERNAME=postgres
    export SPRING_DATASOURCE_PASSWORD=your_password
    export JWT_SECRET=your-secret-key-change-in-production
    ```
+   
+   Or edit `src/main/resources/application.yml` directly.
 
-   Or edit `application.yml` directly (not recommended for production):
-   ```yaml
-   spring:
-     datasource:
-       url: jdbc:postgresql://localhost:5432/kanban_db
-       username: postgres
-       password: your_password
-   jwt:
-     secret: your-secret-key-change-in-production
-   ```
-
-2. Build and run the backend:
+3. **Build and run**
    ```bash
    mvn clean install
    mvn spring-boot:run
    ```
+   
+   Backend starts on `http://localhost:8080`
 
-   The backend will start on `http://localhost:8080`
+### Frontend Setup
 
-#### 3. Frontend Setup
-
-1. Navigate to the frontend directory:
+1. **Navigate to frontend directory**
    ```bash
    cd frontend
    ```
 
-2. Install dependencies:
+2. **Install dependencies**
    ```bash
    npm install
    ```
 
-3. **Configure API URL** (optional - defaults to `/api`):
+3. **Configure API URL** (optional - defaults to `/api`)
    ```bash
-   # Create .env file
    echo "VITE_API_BASE_URL=http://localhost:8080/api" > .env
    ```
 
-4. Start the development server:
+4. **Start development server**
    ```bash
    npm run dev
    ```
+   
+   Frontend starts on `http://localhost:5173`
 
-   The frontend will start on `http://localhost:5173`
+### Local Docker Build (Alternative)
 
-## Key Features
+If you want to build Docker images locally instead of using pre-built ones:
+
+```bash
+# Create .env file (same as Method 1, step 2)
+docker-compose up -d --build
+```
+
+Then follow database initialization steps from Method 1.
+
+---
+
+## 🧪 Testing
+
+> **Note**: All tests are environment-agnostic and work in both local and Docker environments. Tests use H2 in-memory database and don't require external services (PostgreSQL, Redis) to be running.
+
+### Backend Tests
+
+Run backend tests:
+```bash
+mvn test
+```
+
+**Test Coverage:**
+- ✅ **Controllers**: Authentication and Board operations (9 tests)
+- ✅ **Services**: Card, List, and Permission services (46 tests)
+- ✅ **Repositories**: Data access layer tests (13 tests)
+- ✅ **Integration**: WebSocket connection test (1 test)
+- ✅ **Application**: Spring Boot context loading (1 test)
+
+**Total: 70 backend tests** ✓
+
+### Frontend Tests
+
+Run frontend tests:
+```bash
+cd frontend
+npm install  # Install test dependencies
+npm test     # Run tests in watch mode
+```
+
+**Test Coverage:**
+- ✅ **Components**: React component rendering and interaction (4 tests)
+- ✅ **Services**: Authentication service API calls (4 tests)
+
+**Total: 8 frontend tests** ✓
+
+**Test Frameworks:**
+- Backend: JUnit 5, Mockito, Spring Boot Test
+- Frontend: Vitest, React Testing Library
+
+---
+
+## ✨ Key Features
 
 ### Authentication
 - JWT-based authentication
@@ -272,7 +371,9 @@ A full-stack Kanban board application built with Spring Boot and React, featurin
 - **React Query** for server-state caching and synchronization
 - Automatic error handling and retry logic
 
-## Security Features
+---
+
+## 🔒 Security Features
 
 - **Non-root Docker containers**: Application runs as `kanban` user
 - **Secure base images**: Uses Alpine Linux variants
@@ -281,8 +382,4 @@ A full-stack Kanban board application built with Spring Boot and React, featurin
 - **Health checks**: Built-in health monitoring endpoints
 - **CORS configuration**: Configurable allowed origins
 - **JWT authentication**: Secure token-based authentication
-
-
-
-
 

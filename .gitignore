@@ -86,3 +86,10 @@ logs/
 # Deployment documentation (keep local only)
 RENDER_DEPLOYMENT.md
 
+# Frontend build outputs
+frontend/dist/
+frontend/build/
+
+# Personal Docker Hub configuration (users should create their own from .example)
+docker-compose.dockerhub.yml
+
