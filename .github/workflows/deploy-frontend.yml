@@ -1,0 +1,69 @@
+name: Deploy Frontend to Azure
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: kanban-frontend-htghg4h4e5fbe2fx
+  RESOURCE_GROUP: kanban
+  BACKEND_URL: https://kanban-backend-f5epg6agave6hme2.southeastasia-01.azurewebsites.net
+  NODE_VERSION: '20'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install dependencies
+      working-directory: ./frontend
+      run: npm ci
+
+    - name: Build frontend
+      working-directory: ./frontend
+      env:
+        VITE_API_BASE_URL: ${{ env.BACKEND_URL }}/api
+        VITE_WS_URL: ${{ env.BACKEND_URL }}/api/ws
+      run: npm run build
+
+    - name: Create deployment ZIP
+      working-directory: ./frontend
+      run: |
+        cd dist
+        zip -r ../deploy.zip . -x "*.map"
+        ls -lh ../deploy.zip
+
+    - name: Azure Login
+      uses: azure/login@v2
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Deploy to Azure Web App
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        resource-group: ${{ env.RESOURCE_GROUP }}
+        package: ./frontend/deploy.zip
+        type: zip
+
+    - name: Verify deployment
+      run: |
+        echo "✅ Frontend deployed successfully!"
+        echo "URL: https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
+

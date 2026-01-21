@@ -306,8 +306,6 @@ Then follow database initialization steps from Method 1.
 
 ## 🧪 Testing
 
-> **Note**: All tests are environment-agnostic and work in both local and Docker environments. Tests use H2 in-memory database and don't require external services (PostgreSQL, Redis) to be running.
-
 ### Backend Tests
 
 Run backend tests:

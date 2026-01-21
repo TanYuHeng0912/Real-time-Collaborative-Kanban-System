@@ -1,0 +1,63 @@
+name: Deploy Backend to Azure
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'src/**'
+      - 'pom.xml'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: kanban-backend-f5epg6agave6hme2
+  RESOURCE_GROUP: kanban
+  JAVA_VERSION: '17'
+  PACKAGE_NAME: 'kanban-system-1.0.0.jar'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Java
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+        cache: 'maven'
+
+    - name: Build with Maven
+      run: |
+        mvn clean package -DskipTests
+        ls -la target/
+
+    - name: Rename JAR to app.jar
+      run: |
+        cp target/${{ env.PACKAGE_NAME }} target/app.jar
+        ls -la target/app.jar
+
+    - name: Azure Login
+      uses: azure/login@v2
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Deploy to Azure Web App
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        resource-group: ${{ env.RESOURCE_GROUP }}
+        package: ./target/app.jar
+        type: jar
+        startup-command: 'java -jar /home/site/wwwroot/app.jar --spring.profiles.active=azure --server.port=${PORT:8080}'
+
+    - name: Verify deployment
+      run: |
+        echo "✅ Backend deployed successfully!"
+        echo "URL: https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/api/health"
+

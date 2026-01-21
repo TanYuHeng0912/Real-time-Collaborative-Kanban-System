@@ -93,3 +93,8 @@ frontend/build/
 # Personal Docker Hub configuration (users should create their own from .example)
 docker-compose.dockerhub.yml
 
+# Azure credentials (contains sensitive information)
+azure-credentials.json
+azure-credentials-template.json
+*.credentials.json
+

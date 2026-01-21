@@ -4,7 +4,9 @@ spring:
   
   datasource:
     # Use environment variables for production - defaults for local dev
-    # In production, set: SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME, SPRING_DATASOURCE_PASSWORD
+    # For Azure: Set SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME, SPRING_DATASOURCE_PASSWORD
+    # Azure format: jdbc:postgresql://server.postgres.database.azure.com:5432/db?sslmode=require
+    # Azure username: username@servername
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/kanban_db}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
     password: ${SPRING_DATASOURCE_PASSWORD:changeme}
