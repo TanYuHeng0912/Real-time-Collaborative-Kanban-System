@@ -24,8 +24,7 @@ export const useWebSocket = ({ boardId, onCardUpdate }: UseWebSocketProps) => {
     // IMPORTANT: SockJS requires https:// (not wss://) - it handles the protocol internally
     // For Docker: VITE_WS_URL=/api/ws (relative, proxied by nginx)
     // For Render: VITE_WS_URL=https://kanban-backend-d0s2.onrender.com/api/ws
-    const wsUrl = import.meta.env.VITE_WS_URL || 
-      (import.meta.env.PROD ? 'https://kanban-backend-d0s2.onrender.com/api/ws' : '/api/ws');
+    const wsUrl = import.meta.env.VITE_WS_URL || '/api/ws';
     
     console.log('[WebSocket] Connecting to:', wsUrl);
 
