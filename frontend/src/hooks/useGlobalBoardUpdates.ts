@@ -11,8 +11,9 @@ export const useGlobalBoardUpdates = ({ onBoardUpdate }: UseGlobalBoardUpdatesPr
   const clientRef = useRef<Client | null>(null);
 
   useEffect(() => {
+    const wsUrl = import.meta.env.VITE_WS_URL || '/api/ws';
     const client = new Client({
-      webSocketFactory: () => new SockJS('/api/ws') as any,
+      webSocketFactory: () => new SockJS(wsUrl) as any,
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
